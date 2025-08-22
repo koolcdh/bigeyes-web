@@ -1,4 +1,4 @@
-// api/summarize.js — v0.7 final (i18n hard-enforce, contract domain, rebucket, core)
+// api/summarize.js — v0.8 (i18n + domain detect + rebucket + core + repair + CONTRACT)
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
@@ -25,9 +25,11 @@ export default async function handler(req, res) {
         total:'💵 총액', items:'🧾 항목요약', payment:'💳 결제정보',
         intake:'🍽️ 섭취법', allergen:'🚫 알레르겐', nutrition:'📊 영양성분',
         features:'✨ 핵심특징', price:'💰 가격·조건',
+        // Contract
+        parties:'👥 당사자/역할', keyterms:'📌 핵심조항', obligations:'🧭 의무/범위',
+        dates:'🗓️ 기간/해지', fees:'💰 금액/지급', risks:'⚠️ 유의/리스크',
+
         coreLabel:'📝 핵심요약', fallback:'간단 요약',
-        // contract
-        key_terms:'📌 핵심조건', cautions:'⚠️ 주의사항', contract_details:'🔎 세부조항',
         empty:'- 인식된 텍스트가 적습니다.\n- 사진을 더 가까이/밝게 촬영해 보세요.\n- 포커스를 맞춘 후 다시 시도하세요.',
       },
       en: {
@@ -37,12 +39,14 @@ export default async function handler(req, res) {
         total:'💵 Total', items:'🧾 Items', payment:'💳 Payment',
         intake:'🍽️ How to take', allergen:'🚫 Allergens', nutrition:'📊 Nutrition',
         features:'✨ Key features', price:'💰 Price & terms',
+        // Contract
+        parties:'👥 Parties/Roles', keyterms:'📌 Key Terms', obligations:'🧭 Obligations/Scope',
+        dates:'🗓️ Term/Termination', fees:'💰 Fees/Payment', risks:'⚠️ Notes/Risks',
+
         coreLabel:'📝 Summary', fallback:'Brief summary',
-        // contract
-        key_terms:'📌 Key terms', cautions:'⚠️ Cautions', contract_details:'🔎 Details',
         empty:'- Not enough readable text.\n- Try a closer/brighter photo.\n- Ensure focus, then retry.',
       },
-      ja: {}, zh: {}
+      // ja/zh 필요 시 확장
     };
 
     const DOMAINS = ['medicine','manual','receipt','food_label','product_page','contract','general'];
@@ -52,13 +56,12 @@ export default async function handler(req, res) {
       receipt:      ['total','items','payment'],
       food_label:   ['intake','allergen','nutrition'],
       product_page: ['features','price','warnings'],
-      contract:     ['key_terms','cautions','contract_details'],
+      contract:     ['parties','keyterms','obligations','dates','fees','risks'],
       general:      ['summary','warnings','details'],
     };
 
-    /* ---------- utils ---------- */
     const L = (lg) => LABELS[lg] || LABELS.ko;
-    const normalizeSummary = (lg, s) => {
+    const normalizeSummary = (lg, s='') => {
       const t = (s || '').trim();
       if (!t) return L(lg).empty;
       if (!t.includes('\n') && !t.startsWith('-')) return `- ${t}`;
@@ -67,8 +70,10 @@ export default async function handler(req, res) {
     const splitBullets = (text='') =>
       text.split('\n').map(l => l.trim()).filter(Boolean).map(l => (l.startsWith('-') ? l.slice(1).trim() : l));
     const joinBullets = (arr) => (arr && arr.length) ? arr.map(b => `- ${b}`).join('\n') : '';
+
     const GENERIC_PATTERNS_KO = [/주의 필요/,/주의가 필요/,/주의 요함/,/일반적인 주의/,/안전상 주의/,/사용 전.*확인/,/상세.*참조/,/전문가.*상담/];
     const isGenericKo = (s) => GENERIC_PATTERNS_KO.some(r=>r.test(s));
+
     const sanitizeSummary = (lg, text) => {
       const kept = splitBullets(text).filter(b => b.length>1 && !isGenericKo(b));
       return kept.length ? joinBullets(kept) : L(lg).empty;
@@ -94,7 +99,6 @@ export default async function handler(req, res) {
       return joinBullets(bullets.slice(0, want));
     };
 
-    /* ---------- prompts ---------- */
     const promptByLang = (lg='ko') => {
       const labels = L(lg);
       const titleMap = {
@@ -103,28 +107,29 @@ export default async function handler(req, res) {
         receipt:      ['total','items','payment'].map(k => ({ key:k, title:labels[k] || k })),
         food_label:   ['intake','allergen','nutrition'].map(k => ({ key:k, title:labels[k] || k })),
         product_page: ['features','price','warnings'].map(k => ({ key:k, title:labels[k] || k })),
-        contract:     ['key_terms','cautions','contract_details'].map(k => ({ key:k, title:labels[k] || k })),
+        contract:     ['parties','keyterms','obligations','dates','fees','risks'].map(k => ({ key:k, title:labels[k] || k })),
         general:      ['summary','warnings','details'].map(k => ({ key:k, title:labels[k] || k })),
       };
 
-      const head = 'You read tiny printed labels and documents and summarize them concisely in a reporting tone.';
+      const head = 'You read tiny printed labels or documents and summarize them concisely.';
       const role = `
 CATEGORY DEFINITIONS (examples):
-- medicine: dose (when/how much/how often/time/age/with food), warnings (contra/interactions/side effects/storage/pregnancy/children), ingredients.
-- receipt: total, items, payment.
-- food_label: intake, allergens, nutrition.
-- product_page: features, price, warnings.
-- contract: key_terms (amount/period/subject/scope), cautions (exclusions/limitations/cancel-change), contract_details (other clauses/notes).
-- general: summary, warnings, details.
+- medicine: dose / warnings / ingredients
+- manual: howto / warnings / spec
+- receipt: total / items / payment
+- food_label: intake / allergen / nutrition
+- product_page: features / price / warnings
+- contract: parties / keyterms / obligations / dates / fees / risks
 
 GENERAL RULES:
-- Detect domain from ["medicine","manual","receipt","food_label","product_page","contract","general"] and return ALL categories for that domain (no extra/missing, keep order).
-- Each category must use 3–6 short '-' bullets, reporting tone, ONE fact per bullet.
-- Emphasize key numbers/terms; avoid generic filler; no duplication; do not include category titles inside bullets.
-- Provide "core_summary": 2–4 bullets TL;DR with brief advice.
-- All JSON values (categories[].summary, core_summary) MUST be written in ${lg}. If the image text is another language, translate and STILL write in ${lg}.
-- Output JSON only.
-`;
+- Choose one domain from ${JSON.stringify(DOMAINS)}.
+- Return ALL categories for the chosen domain (no extra/missing, keep order).
+- Each category must contain ONLY relevant info; 3–6 bullets, '-' marker, no duplication.
+- Keep a factual, "reporting to user" tone: short bullet points.
+- If info is scarce, keep it minimal; do NOT fabricate.
+- Add "core_summary": 2–4 bullets TL;DR with brief GPT advice. Write in ${lg}.
+- Output JSON only.`;
+
       const titles = Object.entries(titleMap)
         .map(([d, arr]) => `- ${d}: [${arr.map(o => `{"key":"${o.key}","title":"${o.title}"}`).join(', ')}]`)
         .join('\n');
@@ -135,16 +140,15 @@ ${role}
 
 OUTPUT JSON SHAPE:
 {
-  "domain": "<medicine|manual|receipt|food_label|product_page|contract|general>",
+  "domain": "<${DOMAINS.join('|')}>",
   "categories": [
     { "key": "<category key>", "title": "<localized title>", "summary": "<bulleted text in ${lg}>" }
   ],
-  "core_summary": "<2-4 bullets TL;DR with brief advice in ${lg}>"
+  "core_summary": "<2-4 bullets TL;DR with brief GPT advice in ${lg}>"
 }
 
 Localized titles per domain:
-${titles}
-`;
+${titles}`;
     };
 
     const repairPrompt = (lg='ko', domain='general', templateKeys=['summary','warnings','details']) => {
@@ -164,10 +168,10 @@ Return JSON ONLY:
 Rules:
 - Keep EXACTLY these category keys, in this order.
 - Put ONLY relevant info into each category; 3–6 '-' bullets in ${lg}; no duplication.
-- "core_summary": 2–4 bullets TL;DR with brief advice in ${lg}.`;
+- "core_summary": 2–4 bullets TL;DR with brief GPT advice in ${lg}.`;
     };
 
-    const rebucketPrompt = (lg='ko', domain='medicine', templateKeys=[], prevCategories=[]) => {
+    const rebucketPrompt = (lg='ko', domain='general', templateKeys=[], prevCategories=[]) => {
       return `Re-bucket the bullets strictly by definitions for domain "${domain}".
 Keep EXACT category keys in this order: ${templateKeys.join(', ')}.
 Move misplaced bullets to the correct category; remove generic filler. No duplication.
@@ -177,13 +181,12 @@ ${JSON.stringify(prevCategories, null, 2)}
 `;
     };
 
-    /* ---------- OpenAI call ---------- */
     async function callOpenAIWithImage({ lg='ko', imageBase64, promptText }) {
       const body = {
         model: 'gpt-4o-mini',
         temperature: 0,
         top_p: 0.2,
-        max_completion_tokens: 700,
+        max_completion_tokens: 900,
         messages: [
           { role: 'system', content: 'You perform OCR-like reading and concise summarization with structured output.' },
           { role: 'user', content: [
@@ -209,28 +212,8 @@ ${JSON.stringify(prevCategories, null, 2)}
       return parsed;
     }
 
-    // 간단 언어 힌트(ko 우선)
-    const looksLikeKorean = (s='') => /[가-힣]/.test(s);
-    const looksLikeEnglish = (s='') => /[A-Za-z]/.test(s);
-
-    /* ---------- PIPELINE ---------- */
-    // 1) 1차 추출
+    // ---- 1) 1차 추출
     let parsed = await callOpenAIWithImage({ lg: lang, imageBase64, promptText: promptByLang(lang) });
-
-    // 1.5) 언어 불일치 시 1회 재시도 (특히 ko)
-    if (lang === 'ko') {
-      const sample = [
-        parsed?.core_summary || '',
-        ...(Array.isArray(parsed?.categories) ? parsed.categories.map(c=>c.summary||'').slice(0,2) : [])
-      ].join('\n');
-
-      const mismatch = !looksLikeKorean(sample) && looksLikeEnglish(sample);
-      if (mismatch) {
-        const enforce = `Your previous output used the wrong language. Rewrite the SAME JSON in Korean (ko) ONLY. Translate any content if needed. Do not change structure or meaning. Output JSON only.`;
-        const retry = await callOpenAIWithImage({ lg: lang, imageBase64, promptText: enforce });
-        if (retry?.categories?.length) parsed = retry;
-      }
-    }
 
     let domain = DOMAINS.includes(parsed?.domain) ? parsed.domain : 'general';
     const templateKeys = DOMAIN_TEMPLATES[domain];
@@ -253,7 +236,7 @@ ${JSON.stringify(prevCategories, null, 2)}
       if (!exist.has(k)) categories.push({ key:k, title:L(lang)[k]||k, summary:L(lang).empty });
     }
 
-    // 2) Re-bucket
+    // ---- 2) Re-bucket
     const rebucket = await callOpenAIWithImage({
       lg: lang, imageBase64, promptText: rebucketPrompt(lang, domain, templateKeys, categories)
     });
@@ -272,12 +255,12 @@ ${JSON.stringify(prevCategories, null, 2)}
       categories = fixed;
     }
 
-    // 3) 핵심요약
+    // ---- 3) 핵심요약
     let core = String(parsed?.core_summary || '').trim();
     if (!core) core = buildCoreFromCategories(lang, categories);
     core = sanitizeSummary(lang, normalizeSummary(lang, core));
 
-    // 4) 전부 비었으면 마지막 보정
+    // ---- 4) 마지막 보정
     if (allEmptySummaries(lang, categories)) {
       const repaired = await callOpenAIWithImage({
         lg: lang, imageBase64, promptText: repairPrompt(lang, domain, templateKeys)

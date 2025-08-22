@@ -5,71 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>👀 BigEyes</title>
   <style>
-    :root {
-      --card:#121833;
-      --ink:#e8ecff;
-      --muted:#9aa5d1;
-      --accent:#7aa2ff;
-    }
+    :root { --bg:#0b1020; --card:#121833; --ink:#e8ecff; --muted:#9aa5d1; --accent:#7aa2ff; }
     * { box-sizing: border-box; }
-
+    html, body { height: 100%; }
     body {
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Apple SD Gothic Neo, sans-serif;
       color:var(--ink);
-
-      /* ====== 2번 PNG 느낌 재현 ====== */
-      background: radial-gradient(circle at top left, #1e2a47, transparent 40%),
-                  radial-gradient(circle at bottom right, #0b1225, transparent 40%),
-                  linear-gradient(135deg, #0a0f1e, #111a33);
-      background-blend-mode: overlay;
-      background-attachment: fixed;
+      /* 2번 느낌: 다이아몬드/그리드 + 보케 하이라이트(이미지 없이 코드로 구현) */
+      background:
+        radial-gradient(1200px 800px at 75% -10%, rgba(122,162,255,.18), transparent 60%),
+        radial-gradient(900px 600px at 10% 10%, rgba(122,162,255,.10), transparent 55%),
+        linear-gradient(180deg, #0b1020 0%, #070b17 100%),
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 11px),
+        repeating-linear-gradient(135deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 11px);
+      background-blend-mode: screen, screen, normal, overlay, overlay;
     }
 
     header {
-      padding:20px;
-      border-bottom:1px solid #21306a;
-      position:sticky; top:0;
-      background:rgba(11,16,32,.6);
-      backdrop-filter:blur(6px);
+      padding:20px; border-bottom:1px solid #21306a;
+      position:sticky; top:0; z-index:10;
+      background:rgba(11,16,32,.55); backdrop-filter:blur(6px);
       text-align:center;
     }
     h1 { margin:0; font-size:24px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px; }
     h1 .icon { font-size:26px; }
 
     main { max-width:900px; margin:0 auto; padding:20px; display:grid; gap:16px; }
-    .card { background:var(--card); border:1px solid #223066; border-radius:16px; padding:16px; }
-    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:14px 18px; border-radius:14px; background:#1a2a6b; color:#fff; border:1px solid #3350aa; cursor:pointer; font-weight:700; font-size:18px; }
+    .card { background:rgba(18,24,51,.9); border:1px solid #223066; border-radius:16px; padding:16px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:14px 18px; border-radius:14px; background:#1a2a6b; color:#fff; border:1px solid #3350aa; cursor:pointer; font-weight:700; font-size:17px; }
     .btn.secondary { background:#0e1430; border-color:#2a3a7a; color:#c9d3ff; font-weight:600; }
+    .btn.block { width:100%; }
+    .btn-row { display:grid; gap:10px; grid-template-columns:1fr; }
     .preview { width:100%; max-height:380px; object-fit:contain; border-radius:12px; border:1px solid #223066; }
-    .grid { display:grid; gap:10px; grid-template-columns:repeat(2,1fr); }
+
+    .grid2 { display:grid; gap:10px; grid-template-columns:repeat(2,1fr); }
     .list { display:grid; gap:10px; }
-    .answer { white-space:pre-wrap; line-height:1.8; font-size:20px; }
     .row { display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center; }
+
+    .answer { white-space:pre-wrap; line-height:1.85; font-size:20px; }
+    .answer h3 { margin:0 0 8px 0; font-size:20px; }
+    .bul { margin:0; padding-left:1.1em; }
+    .bul li { margin: .25em 0; }
+
     select { padding:10px 12px; border-radius:10px; border:1px solid #3350aa; background:#0e1430; color:#e8ecff; }
     .muted { color: var(--muted); }
     .hidden { display:none; }
-    .lead { font-size:15px; line-height:1.7; text-align:center; }
+
+    .lead { font-size:16px; line-height:1.9; text-align:center; }
     .lead strong { color:#cfe0ff; }
+
+    .titleCenter { display:flex; align-items:center; justify-content:center; gap:.5rem; }
   </style>
 </head>
 <body>
-  <!-- 헤더 -->
   <header>
-    <h1><span class="icon">👀</span> BigEyes</h1>
+    <h1 class="titleCenter"><span class="icon">👀</span> BigEyes</h1>
   </header>
 
   <main>
-    <!-- 소개 섹션 -->
-    <section class="card" aria-label="intro">
-      <div class="lead">
-        <strong>작은 글씨를 쉽고 빠르게 요약합니다.</strong><br/>
-        복잡한 글 → 핵심만 요약
+    <!-- 인트로 + 언어 (언어는 첫 화면에서만) -->
+    <section id="intro" class="card">
+      <div class="lead" id="introLead">
+        작은 글씨를 쉽고 빠르게 요약합니다.<br/>
+        <strong>복잡한 글 → 핵심만 요약</strong>
       </div>
     </section>
 
-    <!-- STEP 0: 언어 -->
-    <section class="card">
+    <!-- 언어 선택(첫 화면에서만 보임) -->
+    <section id="langCard" class="card">
       <div class="row">
         <div>
           <strong id="langLabel">언어</strong>
@@ -85,32 +90,44 @@
       </div>
     </section>
 
-    <!-- STEP 1: 업로드 -->
+    <!-- STEP 1: 업로드 (카메라/파일 2줄) -->
     <section id="step-upload" class="card">
-      <h2 id="step1">1) 사진 선택</h2>
-      <input id="file" type="file" accept="image/*" capture="environment" />
-      <div style="height:10px"></div>
+      <h2 id="step1Title">1) 사진 선택</h2>
+
+      <div class="btn-row" style="margin-bottom:10px">
+        <label class="btn block">
+          📷 <span id="btnCameraText">카메라로 찍기</span>
+          <input id="inputCamera" type="file" accept="image/*" capture="environment" class="hidden">
+        </label>
+        <label class="btn block">
+          📁 <span id="btnFileText">파일에서 선택</span>
+          <input id="inputFile" type="file" accept="image/*" class="hidden">
+        </label>
+      </div>
+
       <img id="img" class="preview hidden" alt="preview"/>
       <div style="height:10px"></div>
-      <button id="btn-analyze" class="btn hidden">🔍 작은 글씨 요약</button>
+      <button id="btnAnalyze" class="btn hidden">🔍 작은 글씨 요약</button>
     </section>
 
-    <!-- STEP 2: 카테고리 선택 -->
+    <!-- STEP 2: 카테고리 -->
     <section id="step-categories" class="card hidden">
-      <h2 id="step2">2) 카테고리 선택</h2>
+      <h2 id="step2Title">2) 카테고리 선택</h2>
       <div id="cats" class="list"></div>
       <div style="height:10px"></div>
-      <button id="btn-retry1" class="btn secondary">↻ 다시 찍기</button>
+      <button id="btnRetry1" class="btn secondary">↻ 다시 찍기</button>
     </section>
 
     <!-- STEP 3: 결과 -->
     <section id="step-answer" class="card hidden">
-      <h2 id="answer-title">3) 결과</h2>
+      <div class="titleCenter" style="justify-content:flex-start;">
+        <h2 id="answerTitle" style="margin:0"></h2>
+      </div>
       <div id="answer" class="answer"></div>
       <div style="height:10px"></div>
-      <div class="grid">
-        <button id="btn-back" class="btn secondary">⬅ 카테고리로 돌아가기</button>
-        <button id="btn-retry2" class="btn secondary">↻ 다시 찍기</button>
+      <div class="grid2">
+        <button id="btnBack" class="btn secondary">⬅ 카테고리로 돌아가기</button>
+        <button id="btnRetry2" class="btn secondary">↻ 다시 찍기</button>
       </div>
     </section>
   </main>
@@ -118,124 +135,238 @@
   <script>
     // ===== i18n =====
     const I18N = {
-      ko: { title:'👀 BigEyes', lang:'언어', langHelp:'요약과 카테고리 표시 언어', step1:'1) 사진 선택', step2:'2) 카테고리 선택', analyzeBtn:'🔍 작은 글씨 요약', retry:'↻ 다시 찍기', back:'⬅ 카테고리로 돌아가기', core:'🧾 핵심요약' },
-      en: { title:'👀 BigEyes', lang:'Language', langHelp:'Language for summaries & categories', step1:'1) Choose a photo', step2:'2) Choose a category', analyzeBtn:'🔍 Summarize tiny text', retry:'↻ Retake', back:'⬅ Back to categories', core:'🧾 Core summary' },
-      ja: { title:'👀 BigEyes', lang:'言語', langHelp:'要約とカテゴリの表示言語', step1:'1) 写真を選択', step2:'2) カテゴリを選択', analyzeBtn:'🔍 小さい文字を要約', retry:'↻ 取り直す', back:'⬅ カテゴリに戻る', core:'🧾 要点要約' },
-      zh: { title:'👀 BigEyes', lang:'语言', langHelp:'摘要与类别显示语言', step1:'1) 选择照片', step2:'2) 选择类别', analyzeBtn:'🔍 摘要小字', retry:'↻ 重新拍摄', back:'⬅ 返回类别', core:'🧾 核心摘要' }
+      ko: {
+        appTitle:'👀 BigEyes',
+        intro1:'작은 글씨를 쉽고 빠르게 요약합니다.',
+        intro2:'복잡한 글 → 핵심만 요약',
+        lang:'언어', langHelp:'요약과 카테고리 표시 언어',
+        step1Title:'1) 사진 선택',
+        camera:'카메라로 찍기',
+        file:'파일에서 선택',
+        analyze:'🔍 작은 글씨 요약',
+        step2Title:'2) 카테고리 선택',
+        core:'🧾 핵심요약',
+        retry:'↻ 다시 찍기',
+        back:'⬅ 카테고리로 돌아가기',
+        result:'결과',
+        alertChoose:'이미지를 선택하세요 / Please choose an image',
+        busy:'인식 중...'
+      },
+      en: {
+        appTitle:'👀 BigEyes',
+        intro1:'Summarize tiny text quickly and easily.',
+        intro2:'Complex text → just the essentials',
+        lang:'Language', langHelp:'Language for summaries & categories',
+        step1Title:'1) Choose a photo',
+        camera:'Use camera',
+        file:'Choose from files',
+        analyze:'🔍 Summarize tiny text',
+        step2Title:'2) Choose a category',
+        core:'🧾 Core summary',
+        retry:'↻ Retake',
+        back:'⬅ Back to categories',
+        result:'Result',
+        alertChoose:'Please choose an image',
+        busy:'Recognizing...'
+      },
+      ja: {
+        appTitle:'👀 BigEyes',
+        intro1:'小さな文字を素早く、簡単に要約します。',
+        intro2:'複雑な文章 → 要点だけ',
+        lang:'言語', langHelp:'要約とカテゴリの表示言語',
+        step1Title:'1) 写真を選択',
+        camera:'カメラで撮影',
+        file:'ファイルから選択',
+        analyze:'🔍 小さい文字を要約',
+        step2Title:'2) カテゴリを選択',
+        core:'🧾 要点要約',
+        retry:'↻ 取り直す',
+        back:'⬅ カテゴリに戻る',
+        result:'結果',
+        alertChoose:'画像を選択してください',
+        busy:'認識中...'
+      },
+      zh: {
+        appTitle:'👀 BigEyes',
+        intro1:'快速、轻松地摘要小字内容。',
+        intro2:'复杂文字 → 抓取要点',
+        lang:'语言', langHelp:'摘要与类别显示语言',
+        step1Title:'1) 选择照片',
+        camera:'使用相机',
+        file:'从文件选择',
+        analyze:'🔍 摘要小字',
+        step2Title:'2) 选择类别',
+        core:'🧾 核心摘要',
+        retry:'↻ 重新拍摄',
+        back:'⬅ 返回类别',
+        result:'结果',
+        alertChoose:'请选择图片',
+        busy:'识别中...'
+      }
     };
 
-    const API_BASE = '';
+    const API_BASE = ''; // same origin
     const $ = (id) => document.getElementById(id);
 
+    const elIntroLead = $('introLead');
+    const elLangCard = $('langCard');
     const elLangLabel = $('langLabel');
     const elLangHelp = $('langHelp');
-    const elStep1 = $('step1');
-    const elStep2 = $('step2');
-    const elAnalyze = $('btn-analyze');
-    const elRetry1 = $('btn-retry1');
-    const elRetry2 = $('btn-retry2');
-    const elBack = $('btn-back');
-
-    const fileInput = $('file');
-    const img = $('img');
+    const elLangSel = $('lang');
 
     const stepUpload = $('step-upload');
     const stepCats = $('step-categories');
     const stepAnswer = $('step-answer');
+
+    const elStep1Title = $('step1Title');
+    const elStep2Title = $('step2Title');
+    const elBtnAnalyze = $('btnAnalyze');
+    const elBtnRetry1 = $('btnRetry1');
+    const elBtnRetry2 = $('btnRetry2');
+    const elBtnBack = $('btnBack');
+    const elBtnCameraText = $('btnCameraText');
+    const elBtnFileText = $('btnFileText');
+
+    const inputCamera = $('inputCamera');
+    const inputFile = $('inputFile');
+    const img = $('img');
     const catsWrap = $('cats');
     const answerBox = $('answer');
-    const answerTitle = $('answer-title');
+    const answerTitle = $('answerTitle');
 
-    const langSel = $('lang');
-    let lastPayload = null;
+    let lastPayload = null; // { domain, categories, coreSummary }
 
-    function applyI18n(){
-      const L = I18N[langSel.value] || I18N.ko;
-      document.title = L.title;
-      elLangLabel.textContent = L.lang; elLangHelp.textContent = L.langHelp;
-      elStep1.textContent = L.step1; elStep2.textContent = L.step2;
-      elAnalyze.textContent = L.analyzeBtn; elRetry1.textContent = L.retry; elRetry2.textContent = L.retry; elBack.textContent = L.back;
+    function applyI18n() {
+      const L = I18N[elLangSel.value] || I18N.ko;
+      document.title = L.appTitle;
+
+      // intro 2줄
+      elIntroLead.innerHTML = `${L.intro1}<br/><strong>${L.intro2}</strong>`;
+
+      // labels
+      elLangLabel.textContent = L.lang;
+      elLangHelp.textContent = L.langHelp;
+      elStep1Title.textContent = L.step1Title;
+      elStep2Title.textContent = L.step2Title;
+      elBtnAnalyze.textContent = L.analyze;
+      elBtnRetry1.textContent = L.retry;
+      elBtnRetry2.textContent = L.retry;
+      elBtnBack.textContent = L.back;
+      elBtnCameraText.textContent = L.camera;
+      elBtnFileText.textContent = L.file;
     }
-    langSel.addEventListener('change', applyI18n);
+    elLangSel.addEventListener('change', applyI18n);
     applyI18n();
 
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files?.[0];
+    // 파일/카메라 선택 → 미리보기
+    async function onFilePicked(file) {
       if (!file) return;
       img.src = URL.createObjectURL(file);
       img.classList.remove('hidden');
-      elAnalyze.classList.remove('hidden');
-    });
+      elBtnAnalyze.classList.remove('hidden');
+    }
+    inputCamera.addEventListener('change', () => onFilePicked(inputCamera.files?.[0]));
+    inputFile.addEventListener('change', () => onFilePicked(inputFile.files?.[0]));
 
+    // Base64
     const toBase64 = (file) => new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result.split(',')[1]);
       reader.readAsDataURL(file);
     });
 
-    elAnalyze.addEventListener('click', async () => {
-      const file = fileInput.files?.[0];
-      if (!file) return alert('이미지를 선택하세요 / Please choose an image');
-      elAnalyze.textContent = '⏳...'; elAnalyze.disabled = true;
-      const base64 = await toBase64(file);
+    // 요약 요청
+    elBtnAnalyze.addEventListener('click', async () => {
+      const L = I18N[elLangSel.value] || I18N.ko;
+      const file = inputCamera.files?.[0] || inputFile.files?.[0];
+      if (!file) return alert(L.alertChoose);
+
+      elBtnAnalyze.textContent = L.busy;
+      elBtnAnalyze.disabled = true;
 
       try {
+        const base64 = await toBase64(file);
         const r = await fetch(`${API_BASE}/api/summarize`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: base64, lang: langSel.value })
+          method:'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({ imageBase64: base64, lang: elLangSel.value })
         });
         const data = await r.json();
-        if (!data.success && !r.ok) throw new Error(data.message || '분석 실패');
+        if (!data.success && !r.ok) throw new Error(data.message || 'Failed');
+
+        // 언어 선택은 첫 화면에서만 보이도록 숨김
+        elLangCard.classList.add('hidden');
 
         lastPayload = data.payload || { categories:[], coreSummary:'' };
         stepUpload.classList.add('hidden');
         renderCategories();
         stepCats.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (e) {
         alert(e.message);
       } finally {
-        elAnalyze.textContent = (I18N[langSel.value]||I18N.ko).analyzeBtn;
-        elAnalyze.disabled = false;
+        elBtnAnalyze.textContent = (I18N[elLangSel.value]||I18N.ko).analyze;
+        elBtnAnalyze.disabled = false;
       }
     });
 
+    // 카테고리 버튼 렌더 (결과는 보고서 받는 느낌의 불릿으로)
     function renderCategories(){
+      const L = I18N[elLangSel.value] || I18N.ko;
       catsWrap.innerHTML = '';
       const list = lastPayload?.categories || [];
       list.forEach((c) => {
         const b = document.createElement('button');
-        b.className = 'btn';
+        b.className = 'btn block';
         b.textContent = c.title || '-';
-        b.addEventListener('click', () => showAnswer(c.title, c.summary));
+        b.addEventListener('click', () => showAnswer(c.title, toBullets(c.summary)));
         catsWrap.appendChild(b);
       });
       const coreBtn = document.createElement('button');
-      coreBtn.className = 'btn secondary';
-      coreBtn.textContent = (I18N[langSel.value]||I18N.ko).core;
-      coreBtn.addEventListener('click', () => showAnswer(coreBtn.textContent, lastPayload?.coreSummary || '-'));
+      coreBtn.className = 'btn secondary block';
+      coreBtn.textContent = L.core;
+      coreBtn.addEventListener('click', () => showAnswer(L.core, toBullets(lastPayload?.coreSummary || '-')));
       catsWrap.appendChild(coreBtn);
     }
 
-    function showAnswer(title, text){
-      answerTitle.textContent = title || '결과';
-      answerBox.textContent = text || '-';
+    // 서술형 텍스트를 "보고받는 느낌"의 불릿 리스트로 정리
+    function toBullets(text='') {
+      const lines = (text || '').split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => s.startsWith('-') ? s.slice(1).trim() : s);
+      if (!lines.length) return '<ul class="bul"><li>-</li></ul>';
+      return '<ul class="bul">' + lines.map(s => `<li>${s}</li>`).join('') + '</ul>';
+    }
+
+    function showAnswer(title, html){
+      const L = I18N[elLangSel.value] || I18N.ko;
+      answerTitle.textContent = title || L.result;
+      answerBox.innerHTML = html || '<ul class="bul"><li>-</li></ul>';
       stepCats.classList.add('hidden');
       stepAnswer.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    // 리셋 & 뒤로
     function resetAll(){
-      lastPayload = null; fileInput.value = ''; img.src = ''; img.classList.add('hidden');
-      elAnalyze.classList.add('hidden');
+      lastPayload = null;
+      inputCamera.value = ''; inputFile.value = '';
+      img.src = ''; img.classList.add('hidden');
+      elBtnAnalyze.classList.add('hidden');
+
       stepAnswer.classList.add('hidden');
       stepCats.classList.add('hidden');
+
+      // 언어 선택 다시 보이기(첫 화면)
+      elLangCard.classList.remove('hidden');
+
       stepUpload.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    elRetry1.addEventListener('click', resetAll);
-    elRetry2.addEventListener('click', resetAll);
-    elBack.addEventListener('click', () => {
+    $('btnRetry1').addEventListener('click', resetAll);
+    $('btnRetry2').addEventListener('click', resetAll);
+    $('btnBack').addEventListener('click', () => {
       stepAnswer.classList.add('hidden');
       stepCats.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
