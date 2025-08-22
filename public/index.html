@@ -158,37 +158,44 @@
     });
 
     // 요약 요청
-    elAnalyze.addEventListener('click', async () => {
-      const file = fileInput.files?.[0];
-      if (!file) return alert('이미지를 선택하세요 / Please choose an image');
+elAnalyze.addEventListener('click', async () => {
+  const file = fileInput.files?.[0];
+  if (!file) return alert('이미지를 선택하세요 / Please choose an image');
 
-      const busy = (langSel.value==='en' ? 'Recognizing...' :
-                   (langSel.value==='ja'? '認識中...' :
-                   (langSel.value==='zh'?'识别中...' : '인식 중...')));
-      elAnalyze.textContent = busy;
-      elAnalyze.disabled = true;
+  const busy = (langSel.value==='en' ? 'Recognizing...' :
+                (langSel.value==='ja'? '認識中...' :
+                (langSel.value==='zh'?'识别中...' : '인식 중...')));
+  elAnalyze.textContent = busy;
+  elAnalyze.disabled = true;
 
-      const base64 = await toBase64(file);
-      try {
-        const r = await fetch(`${API_BASE}/api/summarize`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: base64, lang: langSel.value })
-        });
-        const data = await r.json();
-        if (!data.success && !r.ok) throw new Error(data.message || '분석 실패');
-
-        lastPayload = data.payload || { categories:[], coreSummary:'' };
-        stepUpload.classList.add('hidden');
-        renderCategories();
-        stepCats.classList.remove('hidden');
-      } catch (e) {
-        alert(e.message);
-      } finally {
-        elAnalyze.textContent = (I18N[langSel.value]||I18N.ko).analyzeBtn;
-        elAnalyze.disabled = false;
-      }
+  const base64 = await toBase64(file);
+  try {
+    const r = await fetch(`${API_BASE}/api/summarize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64, lang: langSel.value })
     });
+
+    let data;
+    try { data = await r.json(); }
+    catch { throw new Error('Server returned non-JSON response'); }
+
+    if (!r.ok || !data?.success) {
+      throw new Error(data?.message || `HTTP ${r.status}`);
+    }
+
+    lastPayload = data.payload || { categories:[], coreSummary:'' };
+    stepUpload.classList.add('hidden');
+    renderCategories();
+    stepCats.classList.remove('hidden');
+  } catch (e) {
+    alert(e.message || '분석 실패');
+  } finally {
+    elAnalyze.textContent = (I18N[langSel.value]||I18N.ko).analyzeBtn;
+    elAnalyze.disabled = false;
+  }
+});
+
 
     // 카테고리 렌더
     function renderCategories(){
