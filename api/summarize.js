@@ -1,35 +1,20 @@
-// api/summarize.js — Vercel Serverless Function (final, robust JSON handling)
+// api/summarize.js — v0.7 final (i18n hard-enforce, contract domain, rebucket, core)
 export default async function handler(req, res) {
   try {
-    // 1) 메서드 체크
     if (req.method !== 'POST') {
       return res.status(405).json({ success: false, message: 'Method not allowed' });
     }
 
-    // 2) API 키 체크
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
     if (!OPENAI_API_KEY) {
       return res.status(500).json({ success: false, message: 'Missing OPENAI_API_KEY' });
     }
 
-    // 3) 바디 안전 파싱 (문자열로 오는 경우 대비)
-    let body = req.body;
-    if (typeof body === 'string') {
-      try { body = JSON.parse(body); }
-      catch {
-        return res.status(400).json({ success: false, message: 'Invalid JSON body' });
-      }
-    }
-    if (!body || typeof body !== 'object') {
-      return res.status(400).json({ success: false, message: 'Empty or invalid body' });
-    }
-
-    const { imageBase64, lang = 'ko' } = body;
+    const { imageBase64, lang = 'ko' } = req.body || {};
     if (!imageBase64) {
       return res.status(400).json({ success: false, message: 'imageBase64 is required' });
     }
 
-    // ====== 설정/라벨/유틸 ======
     const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
     const LABELS = {
@@ -41,6 +26,8 @@ export default async function handler(req, res) {
         intake:'🍽️ 섭취법', allergen:'🚫 알레르겐', nutrition:'📊 영양성분',
         features:'✨ 핵심특징', price:'💰 가격·조건',
         coreLabel:'📝 핵심요약', fallback:'간단 요약',
+        // contract
+        key_terms:'📌 핵심조건', cautions:'⚠️ 주의사항', contract_details:'🔎 세부조항',
         empty:'- 인식된 텍스트가 적습니다.\n- 사진을 더 가까이/밝게 촬영해 보세요.\n- 포커스를 맞춘 후 다시 시도하세요.',
       },
       en: {
@@ -51,22 +38,26 @@ export default async function handler(req, res) {
         intake:'🍽️ How to take', allergen:'🚫 Allergens', nutrition:'📊 Nutrition',
         features:'✨ Key features', price:'💰 Price & terms',
         coreLabel:'📝 Summary', fallback:'Brief summary',
+        // contract
+        key_terms:'📌 Key terms', cautions:'⚠️ Cautions', contract_details:'🔎 Details',
         empty:'- Not enough readable text.\n- Try a closer/brighter photo.\n- Ensure focus, then retry.',
       },
+      ja: {}, zh: {}
     };
 
-    const DOMAINS = ['medicine','manual','receipt','food_label','product_page','general'];
+    const DOMAINS = ['medicine','manual','receipt','food_label','product_page','contract','general'];
     const DOMAIN_TEMPLATES = {
       medicine:     ['dose','warnings','ingredients'],
       manual:       ['howto','warnings','spec'],
       receipt:      ['total','items','payment'],
       food_label:   ['intake','allergen','nutrition'],
       product_page: ['features','price','warnings'],
+      contract:     ['key_terms','cautions','contract_details'],
       general:      ['summary','warnings','details'],
     };
 
+    /* ---------- utils ---------- */
     const L = (lg) => LABELS[lg] || LABELS.ko;
-
     const normalizeSummary = (lg, s) => {
       const t = (s || '').trim();
       if (!t) return L(lg).empty;
@@ -76,15 +67,12 @@ export default async function handler(req, res) {
     const splitBullets = (text='') =>
       text.split('\n').map(l => l.trim()).filter(Boolean).map(l => (l.startsWith('-') ? l.slice(1).trim() : l));
     const joinBullets = (arr) => (arr && arr.length) ? arr.map(b => `- ${b}`).join('\n') : '';
-
     const GENERIC_PATTERNS_KO = [/주의 필요/,/주의가 필요/,/주의 요함/,/일반적인 주의/,/안전상 주의/,/사용 전.*확인/,/상세.*참조/,/전문가.*상담/];
     const isGenericKo = (s) => GENERIC_PATTERNS_KO.some(r=>r.test(s));
-
     const sanitizeSummary = (lg, text) => {
       const kept = splitBullets(text).filter(b => b.length>1 && !isGenericKo(b));
       return kept.length ? joinBullets(kept) : L(lg).empty;
     };
-
     const allEmptySummaries = (lg, categories=[]) => {
       if (!categories.length) return true;
       return categories.every(c => {
@@ -92,21 +80,21 @@ export default async function handler(req, res) {
         return !t || t === '-' || t === L(lg).empty || t.length < 3;
       });
     };
-
     const buildCoreFromCategories = (lg, categories=[]) => {
       const bullets=[];
-      for (const c of categories) {
-        for (const b of splitBullets(c?.summary||'')) {
-          if (!isGenericKo(b) && b.length>1) bullets.push(b);
-          if (bullets.length>=5) break;
+      for(const c of categories){
+        for(const b of splitBullets(c?.summary||'')){
+          if(!isGenericKo(b) && b.length>1) bullets.push(b);
+          if(bullets.length>=5) break;
         }
-        if (bullets.length>=5) break;
+        if(bullets.length>=5) break;
       }
-      if (!bullets.length) return L(lg).empty;
+      if(!bullets.length) return L(lg).empty;
       const want = Math.min(5, Math.max(3, bullets.length));
       return joinBullets(bullets.slice(0, want));
     };
 
+    /* ---------- prompts ---------- */
     const promptByLang = (lg='ko') => {
       const labels = L(lg);
       const titleMap = {
@@ -115,27 +103,28 @@ export default async function handler(req, res) {
         receipt:      ['total','items','payment'].map(k => ({ key:k, title:labels[k] || k })),
         food_label:   ['intake','allergen','nutrition'].map(k => ({ key:k, title:labels[k] || k })),
         product_page: ['features','price','warnings'].map(k => ({ key:k, title:labels[k] || k })),
+        contract:     ['key_terms','cautions','contract_details'].map(k => ({ key:k, title:labels[k] || k })),
         general:      ['summary','warnings','details'].map(k => ({ key:k, title:labels[k] || k })),
       };
 
-      const head = 'You read tiny printed labels and summarize them concisely.';
-
+      const head = 'You read tiny printed labels and documents and summarize them concisely in a reporting tone.';
       const role = `
-CATEGORY DEFINITIONS (medicine):
-- dose: when/how much/how often/time/age/with food etc.
-- warnings: contraindications, interactions, side effects, storage cautions, pregnancy/children.
-- ingredients: ingredient names, vitamins/minerals/active amounts.
+CATEGORY DEFINITIONS (examples):
+- medicine: dose (when/how much/how often/time/age/with food), warnings (contra/interactions/side effects/storage/pregnancy/children), ingredients.
+- receipt: total, items, payment.
+- food_label: intake, allergens, nutrition.
+- product_page: features, price, warnings.
+- contract: key_terms (amount/period/subject/scope), cautions (exclusions/limitations/cancel-change), contract_details (other clauses/notes).
+- general: summary, warnings, details.
 
 GENERAL RULES:
-- Choose one domain from ["medicine","manual","receipt","food_label","product_page","general"].
-- Return ALL categories for the chosen domain (no extra/missing, keep order).
-- Each category must contain ONLY relevant info; 3–6 bullets, '-' marker, no duplication.
-- If info is scarce, keep it minimal; do NOT fabricate.
-- Add "core_summary": a 2–4 bullet TL;DR with brief GPT advice.
-- All JSON values MUST be written in ${lg}.
+- Detect domain from ["medicine","manual","receipt","food_label","product_page","contract","general"] and return ALL categories for that domain (no extra/missing, keep order).
+- Each category must use 3–6 short '-' bullets, reporting tone, ONE fact per bullet.
+- Emphasize key numbers/terms; avoid generic filler; no duplication; do not include category titles inside bullets.
+- Provide "core_summary": 2–4 bullets TL;DR with brief advice.
+- All JSON values (categories[].summary, core_summary) MUST be written in ${lg}. If the image text is another language, translate and STILL write in ${lg}.
 - Output JSON only.
 `;
-
       const titles = Object.entries(titleMap)
         .map(([d, arr]) => `- ${d}: [${arr.map(o => `{"key":"${o.key}","title":"${o.title}"}`).join(', ')}]`)
         .join('\n');
@@ -146,11 +135,11 @@ ${role}
 
 OUTPUT JSON SHAPE:
 {
-  "domain": "<medicine|manual|receipt|food_label|product_page|general>",
+  "domain": "<medicine|manual|receipt|food_label|product_page|contract|general>",
   "categories": [
     { "key": "<category key>", "title": "<localized title>", "summary": "<bulleted text in ${lg}>" }
   ],
-  "core_summary": "<2-4 bullets TL;DR in ${lg}>"
+  "core_summary": "<2-4 bullets TL;DR with brief advice in ${lg}>"
 }
 
 Localized titles per domain:
@@ -175,7 +164,7 @@ Return JSON ONLY:
 Rules:
 - Keep EXACTLY these category keys, in this order.
 - Put ONLY relevant info into each category; 3–6 '-' bullets in ${lg}; no duplication.
-- "core_summary": 2–4 bullets TL;DR in ${lg}.`;
+- "core_summary": 2–4 bullets TL;DR with brief advice in ${lg}.`;
     };
 
     const rebucketPrompt = (lg='ko', domain='medicine', templateKeys=[], prevCategories=[]) => {
@@ -188,6 +177,7 @@ ${JSON.stringify(prevCategories, null, 2)}
 `;
     };
 
+    /* ---------- OpenAI call ---------- */
     async function callOpenAIWithImage({ lg='ko', imageBase64, promptText }) {
       const body = {
         model: 'gpt-4o-mini',
@@ -204,13 +194,11 @@ ${JSON.stringify(prevCategories, null, 2)}
         ],
         response_format: { type:'json_object' }
       };
-
       const r = await fetch(OPENAI_URL, {
         method:'POST',
         headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${OPENAI_API_KEY}` },
         body: JSON.stringify(body)
       });
-
       if (!r.ok) {
         const errText = await r.text().catch(()=> '');
         throw new Error(`OpenAI HTTP ${r.status} ${r.statusText} ${errText}`);
@@ -221,8 +209,28 @@ ${JSON.stringify(prevCategories, null, 2)}
       return parsed;
     }
 
-    // ====== 1) 1차 추출
+    // 간단 언어 힌트(ko 우선)
+    const looksLikeKorean = (s='') => /[가-힣]/.test(s);
+    const looksLikeEnglish = (s='') => /[A-Za-z]/.test(s);
+
+    /* ---------- PIPELINE ---------- */
+    // 1) 1차 추출
     let parsed = await callOpenAIWithImage({ lg: lang, imageBase64, promptText: promptByLang(lang) });
+
+    // 1.5) 언어 불일치 시 1회 재시도 (특히 ko)
+    if (lang === 'ko') {
+      const sample = [
+        parsed?.core_summary || '',
+        ...(Array.isArray(parsed?.categories) ? parsed.categories.map(c=>c.summary||'').slice(0,2) : [])
+      ].join('\n');
+
+      const mismatch = !looksLikeKorean(sample) && looksLikeEnglish(sample);
+      if (mismatch) {
+        const enforce = `Your previous output used the wrong language. Rewrite the SAME JSON in Korean (ko) ONLY. Translate any content if needed. Do not change structure or meaning. Output JSON only.`;
+        const retry = await callOpenAIWithImage({ lg: lang, imageBase64, promptText: enforce });
+        if (retry?.categories?.length) parsed = retry;
+      }
+    }
 
     let domain = DOMAINS.includes(parsed?.domain) ? parsed.domain : 'general';
     const templateKeys = DOMAIN_TEMPLATES[domain];
@@ -245,7 +253,7 @@ ${JSON.stringify(prevCategories, null, 2)}
       if (!exist.has(k)) categories.push({ key:k, title:L(lang)[k]||k, summary:L(lang).empty });
     }
 
-    // ====== 2) Re-bucket
+    // 2) Re-bucket
     const rebucket = await callOpenAIWithImage({
       lg: lang, imageBase64, promptText: rebucketPrompt(lang, domain, templateKeys, categories)
     });
@@ -264,12 +272,12 @@ ${JSON.stringify(prevCategories, null, 2)}
       categories = fixed;
     }
 
-    // ====== 3) 핵심요약
+    // 3) 핵심요약
     let core = String(parsed?.core_summary || '').trim();
     if (!core) core = buildCoreFromCategories(lang, categories);
     core = sanitizeSummary(lang, normalizeSummary(lang, core));
 
-    // ====== 4) 전부 비었으면 마지막 보정
+    // 4) 전부 비었으면 마지막 보정
     if (allEmptySummaries(lang, categories)) {
       const repaired = await callOpenAIWithImage({
         lg: lang, imageBase64, promptText: repairPrompt(lang, domain, templateKeys)
@@ -290,8 +298,7 @@ ${JSON.stringify(prevCategories, null, 2)}
     return res.json({ success: true, payload });
 
   } catch (e) {
-    console.error('[API summarize] error:', e);
-    // 항상 JSON으로 에러 반환
-    return res.status(500).json({ success:false, message: e.message || 'Server error' });
+    console.error(e);
+    return res.status(500).json({ success:false, message: e.message });
   }
 }
