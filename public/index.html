@@ -6,13 +6,12 @@
   <title>👀 BigEyes</title>
   <style>
     :root { --bg:#0b1020; --card:#121833; --ink:#e8ecff; --muted:#9aa5d1; --accent:#7aa2ff; }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin:0;
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--ink);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Apple SD Gothic Neo, sans-serif;
-      color:var(--ink);
-      /* 2번 느낌: 다이아몬드/그리드 + 보케 하이라이트(이미지 없이 코드로 구현) */
+      /* 다이아몬드+보케(2번 느낌) */
       background:
         radial-gradient(1200px 800px at 75% -10%, rgba(122,162,255,.18), transparent 60%),
         radial-gradient(900px 600px at 10% 10%, rgba(122,162,255,.10), transparent 55%),
@@ -21,42 +20,43 @@
         repeating-linear-gradient(135deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 11px);
       background-blend-mode: screen, screen, normal, overlay, overlay;
     }
-
-    header {
+    header{
       padding:20px; border-bottom:1px solid #21306a;
       position:sticky; top:0; z-index:10;
       background:rgba(11,16,32,.55); backdrop-filter:blur(6px);
       text-align:center;
     }
-    h1 { margin:0; font-size:24px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px; }
-    h1 .icon { font-size:26px; }
+    h1{margin:0; font-size:24px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px}
+    h1 .icon{font-size:26px}
 
-    main { max-width:900px; margin:0 auto; padding:20px; display:grid; gap:16px; }
-    .card { background:rgba(18,24,51,.9); border:1px solid #223066; border-radius:16px; padding:16px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+    main{max-width:900px; margin:0 auto; padding:20px; display:grid; gap:16px}
+    .card{background:rgba(18,24,51,.9); border:1px solid #223066; border-radius:16px; padding:16px; box-shadow:0 10px 40px rgba(0,0,0,.35)}
+    .titleCenter{display:flex; align-items:center; justify-content:center; gap:.5rem}
 
-    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:14px 18px; border-radius:14px; background:#1a2a6b; color:#fff; border:1px solid #3350aa; cursor:pointer; font-weight:700; font-size:17px; }
-    .btn.secondary { background:#0e1430; border-color:#2a3a7a; color:#c9d3ff; font-weight:600; }
-    .btn.block { width:100%; }
-    .btn-row { display:grid; gap:10px; grid-template-columns:1fr; }
-    .preview { width:100%; max-height:380px; object-fit:contain; border-radius:12px; border:1px solid #223066; }
+    .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:14px 18px; border-radius:14px; background:#1a2a6b; color:#fff; border:1px solid #3350aa; cursor:pointer; font-weight:700; font-size:17px}
+    .btn.secondary{background:#0e1430; border-color:#2a3a7a; color:#c9d3ff; font-weight:600}
+    .btn.block{width:100%}
+    .btn[disabled]{opacity:.5; cursor:not-allowed}
+    .btn-row{display:grid; gap:10px; grid-template-columns:1fr}
+    .row{display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center}
+    .grid2{display:grid; gap:10px; grid-template-columns:repeat(2,1fr)}
+    .list{display:grid; gap:10px}
+    .preview{width:100%; max-height:380px; object-fit:contain; border-radius:12px; border:1px solid #223066}
 
-    .grid2 { display:grid; gap:10px; grid-template-columns:repeat(2,1fr); }
-    .list { display:grid; gap:10px; }
-    .row { display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center; }
+    .lead{font-size:16px; line-height:1.9; text-align:center}
+    .lead strong{color:#cfe0ff}
+    .muted{color:var(--muted)}
+    .hidden{display:none}
+    select{padding:10px 12px; border-radius:10px; border:1px solid #3350aa; background:#0e1430; color:#e8ecff}
 
-    .answer { white-space:pre-wrap; line-height:1.85; font-size:20px; }
-    .answer h3 { margin:0 0 8px 0; font-size:20px; }
-    .bul { margin:0; padding-left:1.1em; }
-    .bul li { margin: .25em 0; }
+    .answer{white-space:pre-wrap; line-height:1.85; font-size:20px}
+    .answer h3{margin:0 0 8px 0; font-size:20px}
+    .bul{margin:0; padding-left:1.1em}
+    .bul li{margin:.25em 0}
 
-    select { padding:10px 12px; border-radius:10px; border:1px solid #3350aa; background:#0e1430; color:#e8ecff; }
-    .muted { color: var(--muted); }
-    .hidden { display:none; }
-
-    .lead { font-size:16px; line-height:1.9; text-align:center; }
-    .lead strong { color:#cfe0ff; }
-
-    .titleCenter { display:flex; align-items:center; justify-content:center; gap:.5rem; }
+    .credit{font-weight:700; color:#b9c8ff}
+    .banner-ad{margin:8px 0 0; border:1px dashed #3350aa; border-radius:12px; padding:12px; text-align:center; color:#9fb1ff; background:#101738}
+    .reward-hint{font-size:14px; color:#b4c2ff}
   </style>
 </head>
 <body>
@@ -65,7 +65,7 @@
   </header>
 
   <main>
-    <!-- 인트로 + 언어 (언어는 첫 화면에서만) -->
+    <!-- 인트로 -->
     <section id="intro" class="card">
       <div class="lead" id="introLead">
         작은 글씨를 쉽고 빠르게 요약합니다.<br/>
@@ -73,7 +73,7 @@
       </div>
     </section>
 
-    <!-- 언어 선택(첫 화면에서만 보임) -->
+    <!-- 언어(첫 화면만) -->
     <section id="langCard" class="card">
       <div class="row">
         <div>
@@ -90,11 +90,14 @@
       </div>
     </section>
 
-    <!-- STEP 1: 업로드 (카메라/파일 2줄) -->
+    <!-- STEP 1 -->
     <section id="step-upload" class="card">
-      <h2 id="step1Title">1) 사진 선택</h2>
+      <div class="row">
+        <h2 id="step1Title" style="margin:0">1) 사진 선택</h2>
+        <div class="credit" id="creditMeter">(이용 가능 건수 : 0000건)</div>
+      </div>
 
-      <div class="btn-row" style="margin-bottom:10px">
+      <div class="btn-row" style="margin:10px 0">
         <label class="btn block">
           📷 <span id="btnCameraText">카메라로 찍기</span>
           <input id="inputCamera" type="file" accept="image/*" capture="environment" class="hidden">
@@ -108,9 +111,12 @@
       <img id="img" class="preview hidden" alt="preview"/>
       <div style="height:10px"></div>
       <button id="btnAnalyze" class="btn hidden">🔍 작은 글씨 요약</button>
+
+      <!-- 배너 광고 (예: 고정 하단 대신 컨텐츠 하단 배치) -->
+      <div id="bannerAd" class="banner-ad">배너 광고 영역 (플레이스홀더)</div>
     </section>
 
-    <!-- STEP 2: 카테고리 -->
+    <!-- STEP 2 -->
     <section id="step-categories" class="card hidden">
       <h2 id="step2Title">2) 카테고리 선택</h2>
       <div id="cats" class="list"></div>
@@ -118,7 +124,7 @@
       <button id="btnRetry1" class="btn secondary">↻ 다시 찍기</button>
     </section>
 
-    <!-- STEP 3: 결과 -->
+    <!-- STEP 3 -->
     <section id="step-answer" class="card hidden">
       <div class="titleCenter" style="justify-content:flex-start;">
         <h2 id="answerTitle" style="margin:0"></h2>
@@ -129,6 +135,14 @@
         <button id="btnBack" class="btn secondary">⬅ 카테고리로 돌아가기</button>
         <button id="btnRetry2" class="btn secondary">↻ 다시 찍기</button>
       </div>
+    </section>
+
+    <!-- 보상형 광고 (하단 고정 섹션) -->
+    <section id="rewardCard" class="card">
+      <h3 style="margin-top:0">🎁 보상형 광고</h3>
+      <p class="reward-hint" id="rewardHint">광고를 시청하면 이용 가능 건수가 1회 충전됩니다.</p>
+      <button id="btnReward" class="btn">광고 보고 1회 충전</button>
+      <div id="rewardContainer" class="muted" style="margin-top:8px">리워드 광고 영역 (플레이스홀더)</div>
     </section>
   </main>
 
@@ -150,7 +164,9 @@
         back:'⬅ 카테고리로 돌아가기',
         result:'결과',
         alertChoose:'이미지를 선택하세요 / Please choose an image',
-        busy:'인식 중...'
+        busy:'인식 중...',
+        creditFmt:(n)=>`(이용 가능 건수 : ${String(n).padStart(4,'0')}건)`,
+        zeroBlock:'보상형 광고를 보면 1회 충전이 가능합니다.'
       },
       en: {
         appTitle:'👀 BigEyes',
@@ -167,7 +183,9 @@
         back:'⬅ Back to categories',
         result:'Result',
         alertChoose:'Please choose an image',
-        busy:'Recognizing...'
+        busy:'Recognizing...',
+        creditFmt:(n)=>`(Credits available : ${String(n).padStart(4,'0')})`,
+        zeroBlock:'Watch a rewarded ad to get 1 more credit.'
       },
       ja: {
         appTitle:'👀 BigEyes',
@@ -184,7 +202,9 @@
         back:'⬅ カテゴリに戻る',
         result:'結果',
         alertChoose:'画像を選択してください',
-        busy:'認識中...'
+        busy:'認識中...',
+        creditFmt:(n)=>`(利用可能回数 : ${String(n).padStart(4,'0')})`,
+        zeroBlock:'リワード広告を見ると1回分が補充されます。'
       },
       zh: {
         appTitle:'👀 BigEyes',
@@ -201,18 +221,25 @@
         back:'⬅ 返回类别',
         result:'结果',
         alertChoose:'请选择图片',
-        busy:'识别中...'
+        busy:'识别中...',
+        creditFmt:(n)=>`(可用次数 : ${String(n).padStart(4,'0')})`,
+        zeroBlock:'观看奖励广告可增加1次使用次数。'
       }
     };
 
-    const API_BASE = ''; // same origin
-    const $ = (id) => document.getElementById(id);
+    // ===== credit =====
+    const MAX_CREDITS = 9999;
+    const DEFAULT_CREDITS = 3;
+    const LS_KEY_CREDITS = 'be_credits_v08';
+
+    const $ = (id)=>document.getElementById(id);
+    const API_BASE = '';
 
     const elIntroLead = $('introLead');
     const elLangCard = $('langCard');
+    const elLangSel = $('lang');
     const elLangLabel = $('langLabel');
     const elLangHelp = $('langHelp');
-    const elLangSel = $('lang');
 
     const stepUpload = $('step-upload');
     const stepCats = $('step-categories');
@@ -226,6 +253,7 @@
     const elBtnBack = $('btnBack');
     const elBtnCameraText = $('btnCameraText');
     const elBtnFileText = $('btnFileText');
+    const elCreditMeter = $('creditMeter');
 
     const inputCamera = $('inputCamera');
     const inputFile = $('inputFile');
@@ -234,16 +262,38 @@
     const answerBox = $('answer');
     const answerTitle = $('answerTitle');
 
-    let lastPayload = null; // { domain, categories, coreSummary }
+    const btnReward = $('btnReward');
+    const rewardHint = $('rewardHint');
 
-    function applyI18n() {
+    let lastPayload = null;
+    let credits = loadCredits();
+
+    function loadCredits(){
+      const n = parseInt(localStorage.getItem(LS_KEY_CREDITS) || `${DEFAULT_CREDITS}`, 10);
+      return clamp(n, 0, MAX_CREDITS);
+    }
+    function saveCredits(n){
+      credits = clamp(n, 0, MAX_CREDITS);
+      localStorage.setItem(LS_KEY_CREDITS, String(credits));
+      renderCredits();
+    }
+    function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+    function renderCredits(){
+      const L = I18N[elLangSel.value] || I18N.ko;
+      elCreditMeter.textContent = L.creditFmt(credits);
+      const blocked = credits <= 0;
+      inputCamera.disabled = blocked;
+      inputFile.disabled = blocked;
+      if(blocked){
+        img.classList.add('hidden');
+        elBtnAnalyze.classList.add('hidden');
+      }
+    }
+
+    function applyI18n(){
       const L = I18N[elLangSel.value] || I18N.ko;
       document.title = L.appTitle;
-
-      // intro 2줄
       elIntroLead.innerHTML = `${L.intro1}<br/><strong>${L.intro2}</strong>`;
-
-      // labels
       elLangLabel.textContent = L.lang;
       elLangHelp.textContent = L.langHelp;
       elStep1Title.textContent = L.step1Title;
@@ -254,89 +304,119 @@
       elBtnBack.textContent = L.back;
       elBtnCameraText.textContent = L.camera;
       elBtnFileText.textContent = L.file;
+      rewardHint.textContent = (elLangSel.value==='ko')
+        ? '광고를 시청하면 이용 가능 건수가 1회 충전됩니다.'
+        : (elLangSel.value==='en')
+          ? 'Watching a rewarded ad adds 1 credit.'
+          : rewardHint.textContent;
+      renderCredits();
     }
     elLangSel.addEventListener('change', applyI18n);
     applyI18n();
 
-    // 파일/카메라 선택 → 미리보기
-    async function onFilePicked(file) {
-      if (!file) return;
+    // 파일/카메라 선택
+    async function onFilePicked(file){
+      if(!file) return;
+      if(credits<=0){
+        alert((I18N[elLangSel.value]||I18N.ko).zeroBlock);
+        return;
+      }
       img.src = URL.createObjectURL(file);
       img.classList.remove('hidden');
       elBtnAnalyze.classList.remove('hidden');
     }
-    inputCamera.addEventListener('change', () => onFilePicked(inputCamera.files?.[0]));
-    inputFile.addEventListener('change', () => onFilePicked(inputFile.files?.[0]));
+    inputCamera.addEventListener('change', ()=> onFilePicked(inputCamera.files?.[0]));
+    inputFile.addEventListener('change', ()=> onFilePicked(inputFile.files?.[0]));
 
     // Base64
-    const toBase64 = (file) => new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.readAsDataURL(file);
+    const toBase64 = (file)=> new Promise((resolve)=>{
+      const r = new FileReader();
+      r.onload = ()=> resolve(r.result.split(',')[1]);
+      r.readAsDataURL(file);
     });
 
-    // 요약 요청
-    elBtnAnalyze.addEventListener('click', async () => {
+    // 전면 광고(플레이스홀더): 카테고리 화면 진입 시 가끔 노출
+    function maybeShowInterstitial(){
+      // 실제 연동 시 이 자리에 interstitial 호출
+      // console.log('[Interstitial] show');
+    }
+
+    // 배너 광고 초기화(플레이스홀더)
+    (function initBanner(){
+      // 실제 연동 시 banner 로드
+      // console.log('[Banner] init');
+    })();
+
+    // 요약 실행
+    elBtnAnalyze.addEventListener('click', async ()=>{
       const L = I18N[elLangSel.value] || I18N.ko;
       const file = inputCamera.files?.[0] || inputFile.files?.[0];
-      if (!file) return alert(L.alertChoose);
+      if(!file) return alert(L.alertChoose);
+      if(credits<=0){
+        alert(L.zeroBlock);
+        return;
+      }
 
       elBtnAnalyze.textContent = L.busy;
       elBtnAnalyze.disabled = true;
 
-      try {
+      try{
+        // 1회 차감
+        saveCredits(credits - 1);
+
         const base64 = await toBase64(file);
         const r = await fetch(`${API_BASE}/api/summarize`, {
           method:'POST',
-          headers: { 'Content-Type':'application/json' },
+          headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ imageBase64: base64, lang: elLangSel.value })
         });
         const data = await r.json();
-        if (!data.success && !r.ok) throw new Error(data.message || 'Failed');
+        if(!data.success && !r.ok) throw new Error(data.message || 'Failed');
 
-        // 언어 선택은 첫 화면에서만 보이도록 숨김
+        // 언어 박스 숨김 (첫화면용)
         elLangCard.classList.add('hidden');
 
         lastPayload = data.payload || { categories:[], coreSummary:'' };
         stepUpload.classList.add('hidden');
         renderCategories();
         stepCats.classList.remove('hidden');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } catch (e) {
+        window.scrollTo({ top:0, behavior:'smooth' });
+
+        // 전면광고 노출(가끔)
+        maybeShowInterstitial();
+      }catch(e){
         alert(e.message);
-      } finally {
+        // 실패 시 환불(선택 사항). 여기선 환불하지 않음.
+      }finally{
         elBtnAnalyze.textContent = (I18N[elLangSel.value]||I18N.ko).analyze;
         elBtnAnalyze.disabled = false;
       }
     });
 
-    // 카테고리 버튼 렌더 (결과는 보고서 받는 느낌의 불릿으로)
     function renderCategories(){
       const L = I18N[elLangSel.value] || I18N.ko;
       catsWrap.innerHTML = '';
       const list = lastPayload?.categories || [];
-      list.forEach((c) => {
+      list.forEach((c)=>{
         const b = document.createElement('button');
         b.className = 'btn block';
         b.textContent = c.title || '-';
-        b.addEventListener('click', () => showAnswer(c.title, toBullets(c.summary)));
+        b.addEventListener('click', ()=> showAnswer(c.title, toBullets(c.summary)));
         catsWrap.appendChild(b);
       });
       const coreBtn = document.createElement('button');
       coreBtn.className = 'btn secondary block';
       coreBtn.textContent = L.core;
-      coreBtn.addEventListener('click', () => showAnswer(L.core, toBullets(lastPayload?.coreSummary || '-')));
+      coreBtn.addEventListener('click', ()=> showAnswer(L.core, toBullets(lastPayload?.coreSummary || '-')));
       catsWrap.appendChild(coreBtn);
     }
 
-    // 서술형 텍스트를 "보고받는 느낌"의 불릿 리스트로 정리
-    function toBullets(text='') {
-      const lines = (text || '').split('\n')
-        .map(s => s.trim())
-        .filter(Boolean)
-        .map(s => s.startsWith('-') ? s.slice(1).trim() : s);
-      if (!lines.length) return '<ul class="bul"><li>-</li></ul>';
-      return '<ul class="bul">' + lines.map(s => `<li>${s}</li>`).join('') + '</ul>';
+    function toBullets(text=''){
+      const lines = (text||'').split('\n')
+        .map(s=>s.trim()).filter(Boolean)
+        .map(s=> s.startsWith('-')? s.slice(1).trim() : s);
+      if(!lines.length) return '<ul class="bul"><li>-</li></ul>';
+      return '<ul class="bul">' + lines.map(s=>`<li>${s}</li>`).join('') + '</ul>';
     }
 
     function showAnswer(title, html){
@@ -345,32 +425,43 @@
       answerBox.innerHTML = html || '<ul class="bul"><li>-</li></ul>';
       stepCats.classList.add('hidden');
       stepAnswer.classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top:0, behavior:'smooth' });
     }
 
-    // 리셋 & 뒤로
     function resetAll(){
       lastPayload = null;
-      inputCamera.value = ''; inputFile.value = '';
-      img.src = ''; img.classList.add('hidden');
+      inputCamera.value=''; inputFile.value='';
+      img.src=''; img.classList.add('hidden');
       elBtnAnalyze.classList.add('hidden');
 
       stepAnswer.classList.add('hidden');
       stepCats.classList.add('hidden');
 
-      // 언어 선택 다시 보이기(첫 화면)
       elLangCard.classList.remove('hidden');
-
       stepUpload.classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top:0, behavior:'smooth' });
+      renderCredits();
     }
-    $('btnRetry1').addEventListener('click', resetAll);
-    $('btnRetry2').addEventListener('click', resetAll);
-    $('btnBack').addEventListener('click', () => {
+    elBtnRetry1.addEventListener('click', resetAll);
+    elBtnRetry2.addEventListener('click', resetAll);
+    elBtnBack.addEventListener('click', ()=>{
       stepAnswer.classList.add('hidden');
       stepCats.classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top:0, behavior:'smooth' });
     });
+
+    // ===== Rewarded(보상형) 광고 훅 =====
+    btnReward.addEventListener('click', async ()=>{
+      // 실제 연동 시: 리워드 광고 로드/표시 후 onReward()에서 충전 처리
+      // 예시: await admob.rewarded.show(); onReward => saveCredits(credits+1)
+      // 여기선 데모로 즉시 충전
+      onRewarded();
+    });
+
+    function onRewarded(){
+      saveCredits(credits + 1);
+      alert('광고 시청 완료! 1회 충전되었습니다.');
+    }
   </script>
 </body>
 </html>
