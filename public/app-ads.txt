@@ -1,0 +1,2 @@
+# BigEyes app-ads.txt
+google.com, pub-8835801061132894, DIRECT, f08c47fec0942fa0
