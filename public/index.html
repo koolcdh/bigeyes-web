@@ -2,16 +2,16 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>👀 BigEyes</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>👀 BigEyes · 쿠팡 최저가</title>
+  <meta name="theme-color" content="#0b1020"/>
   <style>
-    :root { --bg:#0b1020; --card:#121833; --ink:#e8ecff; --muted:#9aa5d1; --accent:#7aa2ff; }
+    :root { --bg:#0b1020; --card:#121833; --ink:#e8ecff; --muted:#9aa5d1; --accent:#7aa2ff; --line:#223066; }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0; color:var(--ink);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Apple SD Gothic Neo, sans-serif;
-      /* 다이아몬드+보케(2번 느낌) */
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Apple SD Gothic Neo, Malgun Gothic, sans-serif;
       background:
         radial-gradient(1200px 800px at 75% -10%, rgba(122,162,255,.18), transparent 60%),
         radial-gradient(900px 600px at 10% 10%, rgba(122,162,255,.10), transparent 55%),
@@ -21,455 +21,211 @@
       background-blend-mode: screen, screen, normal, overlay, overlay;
     }
     header{
-      padding:20px; border-bottom:1px solid #21306a;
+      padding:18px; border-bottom:1px solid var(--line);
       position:sticky; top:0; z-index:10;
       background:rgba(11,16,32,.55); backdrop-filter:blur(6px);
       text-align:center;
     }
-    h1{margin:0; font-size:24px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px}
-    h1 .icon{font-size:26px}
-
-    main{max-width:900px; margin:0 auto; padding:20px; display:grid; gap:16px}
-    .card{background:rgba(18,24,51,.9); border:1px solid #223066; border-radius:16px; padding:16px; box-shadow:0 10px 40px rgba(0,0,0,.35)}
-    .titleCenter{display:flex; align-items:center; justify-content:center; gap:.5rem}
-
-    .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:14px 18px; border-radius:14px; background:#1a2a6b; color:#fff; border:1px solid #3350aa; cursor:pointer; font-weight:700; font-size:17px}
+    h1{margin:0; font-size:22px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:8px}
+    main{max-width:900px; margin:0 auto; padding:16px; display:grid; gap:14px}
+    .card{background:rgba(18,24,51,.92); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 10px 40px rgba(0,0,0,.35)}
+    .lead{font-size:16px; line-height:1.9; text-align:center}
+    .credit{font-weight:700; color:#b9c8ff}
+    .muted{color:var(--muted)}
+    .row{display:grid; gap:10px}
+    .grid2{display:grid; gap:10px; grid-template-columns:repeat(2,1fr)}
+    .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:14px 16px; border-radius:14px; background:#1a2a6b; color:#fff; border:1px solid #3350aa; cursor:pointer; font-weight:700; font-size:17px}
     .btn.secondary{background:#0e1430; border-color:#2a3a7a; color:#c9d3ff; font-weight:600}
     .btn.block{width:100%}
-    .btn[disabled]{opacity:.5; cursor:not-allowed}
-    .btn-row{display:grid; gap:10px; grid-template-columns:1fr}
-    .row{display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center}
-    .grid2{display:grid; gap:10px; grid-template-columns:repeat(2,1fr)}
-    .list{display:grid; gap:10px}
-    .preview{width:100%; max-height:380px; object-fit:contain; border-radius:12px; border:1px solid #223066}
-
-    .lead{font-size:16px; line-height:1.9; text-align:center}
-    .lead strong{color:#cfe0ff}
-    .muted{color:var(--muted)}
-    .hidden{display:none}
-    select{padding:10px 12px; border-radius:10px; border:1px solid #3350aa; background:#0e1430; color:#e8ecff}
-
-    .answer{white-space:pre-wrap; line-height:1.85; font-size:20px}
-    .answer h3{margin:0 0 8px 0; font-size:20px}
-    .bul{margin:0; padding-left:1.1em}
-    .bul li{margin:.25em 0}
-
-    .credit{font-weight:700; color:#b9c8ff}
-    .banner-ad{margin:8px 0 0; border:1px dashed #3350aa; border-radius:12px; padding:12px; text-align:center; color:#9fb1ff; background:#101738}
-    .reward-hint{font-size:14px; color:#b4c2ff}
+    .btn[disabled]{opacity:.55; cursor:not-allowed}
+    input[type="text"]{
+      width:100%; padding:14px 14px; border-radius:12px; border:1px solid #2a3a7a; background:#0e1430; color:var(--ink); font-size:16px;
+    }
+    .tagrow{display:flex; flex-wrap:wrap; gap:8px}
+    .tag{padding:8px 12px; border:1px solid #2a3a7a; border-radius:999px; cursor:pointer; background:#0e1430; color:#cfe0ff; font-size:14px}
+    .banner-ad{margin-top:10px; border:1px dashed var(--line); border-radius:12px; padding:12px; text-align:center; color:#9fb1ff; background:#101738}
+    a { color: var(--accent); text-decoration: none; }
+    .center{ text-align:center }
   </style>
 </head>
 <body>
-  <header>
-    <h1 class="titleCenter"><span class="icon">👀</span> BigEyes</h1>
-  </header>
+<header>
+  <h1>👀 BigEyes · 쿠팡 최저가</h1>
+</header>
 
-  <main>
-    <!-- 인트로 -->
-    <section id="intro" class="card">
-      <div class="lead" id="introLead">
-        1. 현명한 소비!! 쿠팡 최저가 조회!!<br/>
-        <strong>2. 복잡한 글 → 핵심만 요약</strong>
-      </div>
-      <!-- 소개 카드 끝쪽 어딘가에: -->
-<p style="margin-top:10px; text-align:center; font-size:14px;">
-  <a href="/privacy.html" style="color:#7aa2ff; text-decoration:none;">개인정보처리방침</a>
-  &nbsp;·&nbsp;
-  <a href="/terms.html" style="color:#7aa2ff; text-decoration:none;">이용약관</a>
-</p>
+<main>
+  <!-- 인트로 -->
+  <section class="card">
+    <div class="lead">
+      <strong>현명한 소비! 쿠팡에서 최저가 바로 찾기</strong><br/>
+      아래에 “브랜드/모델명/키워드”를 입력하고 검색하면<br/>
+      쿠팡 앱(설치 시)으로 바로 열리고, 없으면 웹으로 열립니다.
+    </div>
+    <p class="center" style="margin:8px 0 0">
+      <span id="creditMeter" class="credit">(이용 가능 건수 : 0000건)</span>
+    </p>
+    <p class="center" style="margin:8px 0 0; font-size:13px">
+      <a href="/privacy.html">개인정보처리방침</a> · <a href="/terms.html">이용약관</a>
+    </p>
+  </section>
 
-    </section>
-
-    <!-- 언어(첫 화면만) -->
-     <!-- 언어 선택(보관용: 화면에서는 숨김) -->
-    <section id="langCard" class="card hidden">
-      <div class="row">
-        <div>
-          <strong id="langLabel">언어</strong>
-          <div style="height:6px"></div>
-          <small id="langHelp" class="muted">요약과 카테고리 표시 언어</small>
-        </div>
-        <select id="lang">
-          <option value="ko" selected>한국어 (ko)</option>
-          <option value="en">English (en)</option>
-          <option value="ja">日本語 (ja)</option>
-          <option value="zh">中文 (zh)</option>
-        </select>
-      </div>
-    </section>
-
-    <!-- STEP 1 -->
-    <section id="step-upload" class="card">
-      <div class="row">
-        <h2 id="step1Title" style="margin:0">1) 사진 선택</h2>
-        <div class="credit" id="creditMeter">(이용 가능 건수 : 000건)</div>
-      </div>
-
-      <div class="btn-row" style="margin:10px 0">
-        <label class="btn block">
-          📷 <span id="btnCameraText">카메라로 찍기</span>
-          <input id="inputCamera" type="file" accept="image/*" capture="environment" class="hidden">
-        </label>
-        <label class="btn block">
-          📁 <span id="btnFileText">파일에서 선택</span>
-          <input id="inputFile" type="file" accept="image/*" class="hidden">
-        </label>
-      </div>
-
-      <img id="img" class="preview hidden" alt="preview"/>
-      <div style="height:10px"></div>
-      <button id="btnAnalyze" class="btn hidden">🔍 작은 글씨 요약</button>
-
-      <!-- 배너 광고 (예: 고정 하단 대신 컨텐츠 하단 배치) -->
-      <div id="bannerAd" class="banner-ad">배너 광고 영역 (플레이스홀더)</div>
-    </section>
-
-    <!-- STEP 2 -->
-    <section id="step-categories" class="card hidden">
-      <h2 id="step2Title">2) 카테고리 선택</h2>
-      <div id="cats" class="list"></div>
-      <div style="height:10px"></div>
-      <button id="btnRetry1" class="btn secondary">↻ 다시 찍기</button>
-    </section>
-
-    <!-- STEP 3 -->
-    <section id="step-answer" class="card hidden">
-      <div class="titleCenter" style="justify-content:flex-start;">
-        <h2 id="answerTitle" style="margin:0"></h2>
-      </div>
-      <div id="answer" class="answer"></div>
-      <div style="height:10px"></div>
+  <!-- 검색 -->
+  <section class="card" id="searchCard">
+    <div class="row">
+      <label for="q"><strong>검색어</strong></label>
+      <input id="q" type="text" placeholder="예) 라코스테 폴로 티셔츠 남성"/>
       <div class="grid2">
-        <button id="btnBack" class="btn secondary">⬅ 카테고리로 돌아가기</button>
-        <button id="btnRetry2" class="btn secondary">↻ 다시 찍기</button>
+        <button id="btnSearch" class="btn">🔎 쿠팡에서 최저가 검색</button>
+        <button id="btnClear" class="btn secondary">🧹 지우기</button>
       </div>
-    </section>
 
-    <!-- 보상형 광고 (하단 고정 섹션) -->
-    <section id="rewardCard" class="card">
-      <h3 style="margin-top:0">🎁 보상형 광고</h3>
-      <p class="reward-hint" id="rewardHint">광고를 시청하면 이용 가능 건수가 1회 충전됩니다.</p>
-      <button id="btnReward" class="btn">광고 보고 1회 충전</button>
-      <div id="rewardContainer" class="muted" style="margin-top:8px">리워드 광고 영역 (플레이스홀더)</div>
-    </section>
-  </main>
+      <div class="tagrow" id="quickTags">
+        <!-- 인기·빠른 검색 태그 -->
+        <span class="tag">애플워치 SE 스트랩</span>
+        <span class="tag">버즈3 프로</span>
+        <span class="tag">라코스테 폴로</span>
+        <span class="tag">아디다스 슈퍼스타</span>
+        <span class="tag">샤오미 선풍기</span>
+        <span class="tag">LG 27인치 모니터</span>
+      </div>
 
-  <script>
-    // ===== i18n =====
-    const I18N = {
-      ko: {
-        appTitle:'👀 BigEyes',
-        intro1:'작은 글씨를 쉽고 빠르게 요약합니다.',
-        intro2:'복잡한 글 → 핵심만 요약',
-        lang:'언어', langHelp:'요약과 카테고리 표시 언어',
-        step1Title:'1) 사진 선택',
-        camera:'카메라로 찍기',
-        file:'파일에서 선택',
-        analyze:'🔍 작은 글씨 요약',
-        step2Title:'2) 카테고리 선택',
-        core:'🧾 핵심요약',
-        retry:'↻ 다시 찍기',
-        back:'⬅ 카테고리로 돌아가기',
-        result:'결과',
-        alertChoose:'이미지를 선택하세요 / Please choose an image',
-        busy:'인식 중...',
-        creditFmt:(n)=>`(이용 가능 건수 : ${String(n).padStart(4,'0')}건)`,
-        zeroBlock:'보상형 광고를 보면 1회 충전이 가능합니다.'
-      },
-      en: {
-        appTitle:'👀 BigEyes',
-        intro1:'Summarize tiny text quickly and easily.',
-        intro2:'Complex text → just the essentials',
-        lang:'Language', langHelp:'Language for summaries & categories',
-        step1Title:'1) Choose a photo',
-        camera:'Use camera',
-        file:'Choose from files',
-        analyze:'🔍 Summarize tiny text',
-        step2Title:'2) Choose a category',
-        core:'🧾 Core summary',
-        retry:'↻ Retake',
-        back:'⬅ Back to categories',
-        result:'Result',
-        alertChoose:'Please choose an image',
-        busy:'Recognizing...',
-        creditFmt:(n)=>`(Credits available : ${String(n).padStart(4,'0')})`,
-        zeroBlock:'Watch a rewarded ad to get 1 more credit.'
-      },
-      ja: {
-        appTitle:'👀 BigEyes',
-        intro1:'小さな文字を素早く、簡単に要約します。',
-        intro2:'複雑な文章 → 要点だけ',
-        lang:'言語', langHelp:'要約とカテゴリの表示言語',
-        step1Title:'1) 写真を選択',
-        camera:'カメラで撮影',
-        file:'ファイルから選択',
-        analyze:'🔍 小さい文字を要約',
-        step2Title:'2) カテゴリを選択',
-        core:'🧾 要点要約',
-        retry:'↻ 取り直す',
-        back:'⬅ カテゴリに戻る',
-        result:'結果',
-        alertChoose:'画像を選択してください',
-        busy:'認識中...',
-        creditFmt:(n)=>`(利用可能回数 : ${String(n).padStart(4,'0')})`,
-        zeroBlock:'リワード広告を見ると1回分が補充されます。'
-      },
-      zh: {
-        appTitle:'👀 BigEyes',
-        intro1:'快速、轻松地摘要小字内容。',
-        intro2:'复杂文字 → 抓取要点',
-        lang:'语言', langHelp:'摘要与类别显示语言',
-        step1Title:'1) 选择照片',
-        camera:'使用相机',
-        file:'从文件选择',
-        analyze:'🔍 摘要小字',
-        step2Title:'2) 选择类别',
-        core:'🧾 核心摘要',
-        retry:'↻ 重新拍摄',
-        back:'⬅ 返回类别',
-        result:'结果',
-        alertChoose:'请选择图片',
-        busy:'识别中...',
-        creditFmt:(n)=>`(可用次数 : ${String(n).padStart(4,'0')})`,
-        zeroBlock:'观看奖励广告可增加1次使用次数。'
-      }
-    };
+      <div class="banner-ad">배너 광고 영역 (플레이스홀더)</div>
+    </div>
+  </section>
 
-    // ===== credit =====
-    const MAX_CREDITS = 9999;
-    const DEFAULT_CREDITS = 3;
-    const LS_KEY_CREDITS = 'be_credits_v08';
+  <!-- 보상형 광고(충전) -->
+  <section class="card">
+    <h3 style="margin:0 0 8px">🎁 보상형 광고</h3>
+    <p class="muted" style="margin:0 0 8px">광고를 시청하면 이용 가능 건수가 <strong>1회</strong> 충전됩니다.</p>
+    <button id="btnReward" class="btn">광고 보고 1회 충전</button>
+    <div id="rewardContainer" class="muted" style="margin-top:8px">리워드 광고 영역 (플레이스홀더)</div>
+  </section>
 
-    const $ = (id)=>document.getElementById(id);
-    const API_BASE = '';
+  <!-- 도움말 -->
+  <section class="card">
+    <h3 style="margin:0 0 8px">ℹ️ 팁</h3>
+    <ul class="muted" style="margin:0; padding-left:1.2em; line-height:1.9">
+      <li>검색 시 1건이 차감됩니다. (충전: 상단 ‘보상형 광고’)</li>
+      <li>앱이 설치되어 있으면 쿠팡 <em>앱</em>으로, 아니면 <em>웹</em>으로 자동 연결됩니다.</li>
+      <li>초기 건수 변경: <code>DEFAULT_CREDITS</code> 값을 수정하거나 <code>?reset=1</code>로 초기화.</li>
+    </ul>
+  </section>
+</main>
 
-    const elIntroLead = $('introLead');
-    const elLangCard = $('langCard');
-    const elLangSel = $('lang');
-    const elLangLabel = $('langLabel');
-    const elLangHelp = $('langHelp');
+<script>
+  // ===== 파트너스/설정 =====
+  const PARTNER_ID = 'AF2974050'; // ✅ 쿠팡 파트너스 ID
+  const SUB_ID = 'bigeyes';       // 리포트 구분용(필요 없으면 공백 OK)
 
-    const stepUpload = $('step-upload');
-    const stepCats = $('step-categories');
-    const stepAnswer = $('step-answer');
+  // ⚠️ 링크 전략
+  // 1) 쿠팡 앱 딥링크 우선: coupang://search?q=키워드
+  // 2) 웹 fallback: https://www.coupang.com/np/search?q=키워드
+  // 3) 추적 태그: lptag=PARTNER_ID & subId=SUB_ID (필요 시 조정)
+  //
+  // ※ 쿠팡 파트너스의 세부 추적 파라미터는 운영 정책/계정별로 다를 수 있어
+  //   아래 makeWebUrl()의 파라미터는 상단 PARTNER_ID에서 일괄 관리하도록 구성함.
 
-    const elStep1Title = $('step1Title');
-    const elStep2Title = $('step2Title');
-    const elBtnAnalyze = $('btnAnalyze');
-    const elBtnRetry1 = $('btnRetry1');
-    const elBtnRetry2 = $('btnRetry2');
-    const elBtnBack = $('btnBack');
-    const elBtnCameraText = $('btnCameraText');
-    const elBtnFileText = $('btnFileText');
-    const elCreditMeter = $('creditMeter');
+  function makeAppUrl(q){
+    return 'coupang://search?q=' + encodeURIComponent(q);
+  }
+  function makeWebUrl(q){
+    const base = 'https://www.coupang.com/np/search';
+    const params = new URLSearchParams({
+      q: q,
+      channel: 'user',
+      // 아래 두 파라미터는 파트너스 추적용으로 사용.
+      // 필요 시 본인 정책에 맞게 유지/수정 가능.
+      lptag: PARTNER_ID,
+      subId: SUB_ID
+    });
+    return `${base}?${params.toString()}`;
+  }
 
-    const inputCamera = $('inputCamera');
-    const inputFile = $('inputFile');
-    const img = $('img');
-    const catsWrap = $('cats');
-    const answerBox = $('answer');
-    const answerTitle = $('answerTitle');
+  // ===== 크레딧(건수) =====
+  const MAX_CREDITS = 9999;
+  const DEFAULT_CREDITS = 3;              // ← 초기 건수(원하면 변경)
+  const LS_KEY_CREDITS = 'be_credits_v08';
+  const elCreditMeter = document.getElementById('creditMeter');
 
-    const btnReward = $('btnReward');
-    const rewardHint = $('rewardHint');
+  function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+  function loadCredits(){
+    const n = parseInt(localStorage.getItem(LS_KEY_CREDITS) || `${DEFAULT_CREDITS}`, 10);
+    return clamp(Number.isFinite(n) ? n : DEFAULT_CREDITS, 0, MAX_CREDITS);
+  }
+  function saveCredits(n){
+    const v = clamp(n, 0, MAX_CREDITS);
+    localStorage.setItem(LS_KEY_CREDITS, String(v));
+    renderCredits(v);
+    return v;
+  }
+  function renderCredits(v = loadCredits()){
+    elCreditMeter.textContent = `(이용 가능 건수 : ${String(v).padStart(4,'0')}건)`;
+  }
 
-    let lastPayload = null;
+  // 초기화 + reset 파라미터 지원
+  (function initCredits(){
+    const params = new URLSearchParams(location.search);
+    if (params.has('reset')) localStorage.removeItem(LS_KEY_CREDITS);
+    renderCredits();
+  })();
+
+  // ===== UI 요소 =====
+  const $ = (id)=>document.getElementById(id);
+  const q = $('q');
+  const btnSearch = $('btnSearch');
+  const btnClear = $('btnClear');
+  const btnReward = $('btnReward');
+  const tags = $('quickTags');
+
+  // 빠른 태그 클릭 → 입력창 채우고 바로 검색
+  tags.addEventListener('click', (e)=>{
+    const t = e.target.closest('.tag');
+    if(!t) return;
+    q.value = t.textContent.trim();
+    doSearch();
+  });
+
+  // 검색 버튼
+  btnSearch.addEventListener('click', doSearch);
+  q.addEventListener('keydown', (e)=>{ if(e.key==='Enter') doSearch(); });
+
+  function doSearch(){
+    const keyword = (q.value||'').trim();
+    if(!keyword){ alert('검색어를 입력하세요.'); q.focus(); return; }
+
     let credits = loadCredits();
+    if(credits <= 0){ alert('잔여 건수가 없습니다. 광고 시청으로 충전해주세요.'); return; }
 
-    function loadCredits(){
-      const n = parseInt(localStorage.getItem(LS_KEY_CREDITS) || `${DEFAULT_CREDITS}`, 10);
-      return clamp(n, 0, MAX_CREDITS);
-    }
-    function saveCredits(n){
-      credits = clamp(n, 0, MAX_CREDITS);
-      localStorage.setItem(LS_KEY_CREDITS, String(credits));
-      renderCredits();
-    }
-    function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
-    function renderCredits(){
-      const L = I18N[elLangSel.value] || I18N.ko;
-      elCreditMeter.textContent = L.creditFmt(credits);
-      const blocked = credits <= 0;
-      inputCamera.disabled = blocked;
-      inputFile.disabled = blocked;
-      if(blocked){
-        img.classList.add('hidden');
-        elBtnAnalyze.classList.add('hidden');
-      }
-    }
+    // 1건 차감
+    credits = saveCredits(credits - 1);
 
-    function applyI18n(){
-      const L = I18N[elLangSel.value] || I18N.ko;
-      document.title = L.appTitle;
-      elIntroLead.innerHTML = `${L.intro1}<br/><strong>${L.intro2}</strong>`;
-      elLangLabel.textContent = L.lang;
-      elLangHelp.textContent = L.langHelp;
-      elStep1Title.textContent = L.step1Title;
-      elStep2Title.textContent = L.step2Title;
-      elBtnAnalyze.textContent = L.analyze;
-      elBtnRetry1.textContent = L.retry;
-      elBtnRetry2.textContent = L.retry;
-      elBtnBack.textContent = L.back;
-      elBtnCameraText.textContent = L.camera;
-      elBtnFileText.textContent = L.file;
-      rewardHint.textContent = (elLangSel.value==='ko')
-        ? '광고를 시청하면 이용 가능 건수가 1회 충전됩니다.'
-        : (elLangSel.value==='en')
-          ? 'Watching a rewarded ad adds 1 credit.'
-          : rewardHint.textContent;
-      renderCredits();
-    }
-    elLangSel.addEventListener('change', applyI18n);
-    applyI18n();
+    // 앱 우선 → 웹 폴백
+    const appUrl = makeAppUrl(keyword);
+    const webUrl = makeWebUrl(keyword);
 
-    // 파일/카메라 선택
-    async function onFilePicked(file){
-      if(!file) return;
-      if(credits<=0){
-        alert((I18N[elLangSel.value]||I18N.ko).zeroBlock);
-        return;
-      }
-      img.src = URL.createObjectURL(file);
-      img.classList.remove('hidden');
-      elBtnAnalyze.classList.remove('hidden');
-    }
-    inputCamera.addEventListener('change', ()=> onFilePicked(inputCamera.files?.[0]));
-    inputFile.addEventListener('change', ()=> onFilePicked(inputFile.files?.[0]));
+    // 앱 시도
+    location.href = appUrl;
 
-    // Base64
-    const toBase64 = (file)=> new Promise((resolve)=>{
-      const r = new FileReader();
-      r.onload = ()=> resolve(r.result.split(',')[1]);
-      r.readAsDataURL(file);
-    });
+    // 400ms 후 웹 폴백 (앱이 열린 경우 보통 영향 없음)
+    setTimeout(()=> {
+      window.open(webUrl, '_blank', 'noopener,noreferrer');
+    }, 400);
+  }
 
-    // 전면 광고(플레이스홀더): 카테고리 화면 진입 시 가끔 노출
-    function maybeShowInterstitial(){
-      // 실제 연동 시 이 자리에 interstitial 호출
-      // console.log('[Interstitial] show');
-    }
+  // 지우기
+  btnClear.addEventListener('click', ()=>{
+    q.value=''; q.focus();
+  });
 
-    // 배너 광고 초기화(플레이스홀더)
-    (function initBanner(){
-      // 실제 연동 시 banner 로드
-      // console.log('[Banner] init');
-    })();
+  // 보상형(시뮬) → 1회 충전
+  btnReward.addEventListener('click', ()=>{
+    // 실제 SDK 연동 시 광고 완료 콜백에서 saveCredits(loadCredits()+1) 호출
+    saveCredits(loadCredits() + 1);
+    alert('광고 시청 완료! 1회 충전되었습니다.');
+  });
 
-    // 요약 실행
-    elBtnAnalyze.addEventListener('click', async ()=>{
-      const L = I18N[elLangSel.value] || I18N.ko;
-      const file = inputCamera.files?.[0] || inputFile.files?.[0];
-      if(!file) return alert(L.alertChoose);
-      if(credits<=0){
-        alert(L.zeroBlock);
-        return;
-      }
-
-      elBtnAnalyze.textContent = L.busy;
-      elBtnAnalyze.disabled = true;
-
-      try{
-        // 1회 차감
-        saveCredits(credits - 1);
-
-        const base64 = await toBase64(file);
-        const r = await fetch(`${API_BASE}/api/summarize`, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ imageBase64: base64, lang: elLangSel.value })
-        });
-        const data = await r.json();
-        if(!data.success && !r.ok) throw new Error(data.message || 'Failed');
-
-        // 언어 박스 숨김 (첫화면용)
-        elLangCard.classList.add('hidden');
-
-        lastPayload = data.payload || { categories:[], coreSummary:'' };
-        stepUpload.classList.add('hidden');
-        renderCategories();
-        stepCats.classList.remove('hidden');
-        window.scrollTo({ top:0, behavior:'smooth' });
-
-        // 전면광고 노출(가끔)
-        maybeShowInterstitial();
-      }catch(e){
-        alert(e.message);
-        // 실패 시 환불(선택 사항). 여기선 환불하지 않음.
-      }finally{
-        elBtnAnalyze.textContent = (I18N[elLangSel.value]||I18N.ko).analyze;
-        elBtnAnalyze.disabled = false;
-      }
-    });
-
-    function renderCategories(){
-      const L = I18N[elLangSel.value] || I18N.ko;
-      catsWrap.innerHTML = '';
-      const list = lastPayload?.categories || [];
-      list.forEach((c)=>{
-        const b = document.createElement('button');
-        b.className = 'btn block';
-        b.textContent = c.title || '-';
-        b.addEventListener('click', ()=> showAnswer(c.title, toBullets(c.summary)));
-        catsWrap.appendChild(b);
-      });
-      const coreBtn = document.createElement('button');
-      coreBtn.className = 'btn secondary block';
-      coreBtn.textContent = L.core;
-      coreBtn.addEventListener('click', ()=> showAnswer(L.core, toBullets(lastPayload?.coreSummary || '-')));
-      catsWrap.appendChild(coreBtn);
-    }
-
-    function toBullets(text=''){
-      const lines = (text||'').split('\n')
-        .map(s=>s.trim()).filter(Boolean)
-        .map(s=> s.startsWith('-')? s.slice(1).trim() : s);
-      if(!lines.length) return '<ul class="bul"><li>-</li></ul>';
-      return '<ul class="bul">' + lines.map(s=>`<li>${s}</li>`).join('') + '</ul>';
-    }
-
-    function showAnswer(title, html){
-      const L = I18N[elLangSel.value] || I18N.ko;
-      answerTitle.textContent = title || L.result;
-      answerBox.innerHTML = html || '<ul class="bul"><li>-</li></ul>';
-      stepCats.classList.add('hidden');
-      stepAnswer.classList.remove('hidden');
-      window.scrollTo({ top:0, behavior:'smooth' });
-    }
-
-    function resetAll(){
-      lastPayload = null;
-      inputCamera.value=''; inputFile.value='';
-      img.src=''; img.classList.add('hidden');
-      elBtnAnalyze.classList.add('hidden');
-
-      stepAnswer.classList.add('hidden');
-      stepCats.classList.add('hidden');
-
-      elLangCard.classList.remove('hidden');
-      stepUpload.classList.remove('hidden');
-      window.scrollTo({ top:0, behavior:'smooth' });
-      renderCredits();
-    }
-    elBtnRetry1.addEventListener('click', resetAll);
-    elBtnRetry2.addEventListener('click', resetAll);
-    elBtnBack.addEventListener('click', ()=>{
-      stepAnswer.classList.add('hidden');
-      stepCats.classList.remove('hidden');
-      window.scrollTo({ top:0, behavior:'smooth' });
-    });
-
-    // ===== Rewarded(보상형) 광고 훅 =====
-    btnReward.addEventListener('click', async ()=>{
-      // 실제 연동 시: 리워드 광고 로드/표시 후 onReward()에서 충전 처리
-      // 예시: await admob.rewarded.show(); onReward => saveCredits(credits+1)
-      // 여기선 데모로 즉시 충전
-      onRewarded();
-    });
-
-    function onRewarded(){
-      saveCredits(credits + 1);
-      alert('광고 시청 완료! 1회 충전되었습니다.');
-    }
-  </script>
+  // 배너/전면 광고 placeholder (필요시 SDK 연결)
+  (function initBanner(){ /* ... */ })();
+</script>
 </body>
 </html>
