@@ -22,9 +22,14 @@ main{max-width:900px;margin:0 auto;padding:16px;display:grid;gap:14px}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 input[type="file"]{display:none}
 input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #2a3a7a;background:#0e1430;color:#e8ecff}
+textarea.summary-box{
+  width:100%; min-height:160px; padding:12px 14px;
+  border-radius:12px; border:1px solid #2a3a7a;
+  background:#0e1430; color:#e8ecff; line-height:1.7; font-size:15px;
+  resize:vertical;
+}
 .preview{width:100%;max-height:380px;object-fit:contain;border-radius:12px;border:1px solid var(--line)}
 .hidden{display:none}
-.answer{white-space:pre-wrap;line-height:1.85}
 .small{font-size:13px;color:var(--muted)}
 .section-title{margin:0 0 6px}
 </style>
@@ -37,7 +42,7 @@ input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px so
   <section class="card">
     <div class="lead">
       <strong>사진 속 작은 글씨 요약</strong> + <strong>쿠팡 최저가 바로가기</strong><br/>
-      자동 추출된 검색어는 <em>수정 가능</em>해요.
+      자동 추출된 검색어는 필요하면 <em>수정</em>하세요.
     </div>
     <p style="text-align:center;margin:8px 0 0">
       <span id="creditTop" class="credit">(이용 가능 건수 : 0000건)</span>
@@ -72,28 +77,35 @@ input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px so
     <p class="small">※ 같은 사진에 대해 OCR은 한 번만 차감됩니다.</p>
   </section>
 
-  <!-- STEP 2-A: 카테고리/요약 결과(기존) -->
-  <section id="stepCats" class="card hidden">
-    <h2 class="section-title">2) 카테고리 선택</h2>
-    <div id="cats" class="row"></div>
-    <div style="height:8px"></div>
-    <button id="btnBack1" class="btn secondary">↻ 다시 찍기</button>
+  <!-- STEP 2-A: 간단 요약 화면(읽기 전용) -->
+  <section id="stepSummary" class="card hidden">
+    <h2 class="section-title">2) 요약 결과</h2>
+    <textarea id="sumReadOnly" class="summary-box" readonly></textarea>
+    <div class="row" style="grid-template-columns:1fr auto;align-items:center">
+      <button id="btnBackSum" class="btn secondary">⬅ 이전 화면으로</button>
+      <button id="btnGoCoupangDirect" class="btn">🛒 최저가 보러가기</button>
+    </div>
+    <p class="small">※ 바로 이동 시, 아래 화면에서 검색어를 수정하지 않고 진행합니다.</p>
   </section>
 
-  <!-- STEP 2-B: 쿠팡 키워드 수정 섹션 -->
+  <!-- STEP 2-B: 쿠팡 키워드 확인/수정 -->
   <section id="stepCoupang" class="card hidden">
-    <h2 class="section-title">2) 쿠팡 검색 키워드 확인/수정</h2>
+    <h2 class="section-title">2) 쿠팡 검색 전 확인</h2>
     <div class="row">
-      <input id="kwBrand" type="text" placeholder="브랜드 (예: 라코스테)">
-      <input id="kwModel" type="text" placeholder="모델 (예: L1212)">
-      <input id="kwName"  type="text" placeholder="제품명 (예: 폴로 티셔츠)">
-      <input id="kwAttrs" type="text" placeholder="속성 (예: 남성, 반팔, 화이트)">
-      <input id="kwFinal" type="text" placeholder="최종 검색어 (자동 생성/수정 가능)">
+      <label><strong>요약 내용</strong></label>
+      <textarea id="sumBox" class="summary-box" readonly></textarea>
       <div class="grid2">
-        <button id="btnMakeKW" class="btn secondary">🔧 검색어 자동 구성</button>
+        <button id="btnEditSum" class="btn secondary">✏️ 수정</button>
+        <span class="small" style="align-self:center">※ 필요할 때만 수정하세요.</span>
+      </div>
+
+      <label><strong>검색어</strong></label>
+      <input id="kwFinal" type="text" placeholder="쿠팡 검색어" />
+
+      <div class="grid2" style="margin-top:8px">
+        <button id="btnBack2" class="btn secondary">⬅ 이전 화면으로</button>
         <button id="btnGoCoupang" class="btn">🛒 최저가 보러가기</button>
       </div>
-      <button id="btnBack2" class="btn secondary">⬅ 사진 화면으로</button>
     </div>
   </section>
 
@@ -106,197 +118,129 @@ input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px so
 </main>
 
 <script>
-// ====== 설정 ======
-const API_BASE = '';                 // 서버 넣으면 실제 요약, 비우면 Mock
+/* ===== 설정 ===== */
+const API_BASE = '';                 // 서버 넣으면 실제 요약, 비우면 Mock 동작
 const USE_MOCK = !API_BASE;
-
 const PARTNER_ID = 'AF2974050';      // 쿠팡 파트너스
-const SUB_ID     = 'bigeyes';
-
+const SUB_ID     = 'bigeyes';        // 추적 구분자(원하면 변경)
 const LS_KEY = 'be_credits_v08';
 const DEFAULT_CREDITS = 3;
 const MAX_CREDITS = 9999;
 
-// ====== 상태 ======
+/* ===== 상태/요소 ===== */
 let lastImageBlob = null;
-let lastOCR = null;        // { product:{brand,model,name,attrs[]}, coreSummary, categories[] }
-let ocrDoneForThisImage = false; // 같은 이미지면 OCR 1회만 차감
+let lastOCR = null;                  // { product, coreSummary }
+let ocrDoneForThisImage = false;
 
-// ====== 요소 ======
 const $ = id => document.getElementById(id);
-const creditTop = $('creditTop'), creditTop2 = $('creditTop2');
-const stepUpload=$('stepUpload'), stepCats=$('stepCats'), stepCoupang=$('stepCoupang');
+const creditTop=$('creditTop'), creditTop2=$('creditTop2');
+const stepUpload=$('stepUpload'), stepSummary=$('stepSummary'), stepCoupang=$('stepCoupang');
 const fileCam=$('fileCam'), filePick=$('filePick'), imgPrev=$('imgPrev');
 const btnAnalyze=$('btnAnalyze'), btnCoupangFlow=$('btnCoupangFlow');
-const catsBox=$('cats'), btnBack1=$('btnBack1'), btnBack2=$('btnBack2');
-const kwBrand=$('kwBrand'), kwModel=$('kwModel'), kwName=$('kwName'), kwAttrs=$('kwAttrs'), kwFinal=$('kwFinal');
-const btnMakeKW=$('btnMakeKW'), btnGoCoupang=$('btnGoCoupang');
+const sumReadOnly=$('sumReadOnly'), btnBackSum=$('btnBackSum'), btnGoCoupangDirect=$('btnGoCoupangDirect');
+const sumBox=$('sumBox'), btnEditSum=$('btnEditSum'), kwFinal=$('kwFinal');
+const btnBack2=$('btnBack2'), btnGoCoupang=$('btnGoCoupang');
 const btnReward=$('btnReward');
 
-// ====== 크레딧 ======
+/* ===== 크레딧 ===== */
 function clamp(n,lo,hi){return Math.max(lo,Math.min(hi,n))}
 function pad4(n){return String(n).padStart(4,'0')}
-function loadCredits(){const n=parseInt(localStorage.getItem(LS_KEY) || `${DEFAULT_CREDITS}`,10);return clamp(Number.isFinite(n)?n:DEFAULT_CREDITS,0,MAX_CREDITS)}
+function loadCredits(){const n=parseInt(localStorage.getItem(LS_KEY)||`${DEFAULT_CREDITS}`,10);return clamp(Number.isFinite(n)?n:DEFAULT_CREDITS,0,MAX_CREDITS)}
 function saveCredits(n){const v=clamp(n,0,MAX_CREDITS);localStorage.setItem(LS_KEY,String(v));renderCredits(v)}
 function renderCredits(v=loadCredits()){
   const txt=`(이용 가능 건수 : ${pad4(v)}건)`;
   creditTop.textContent=txt; creditTop2.textContent=txt;
-  const blocked = v<=0;
-  fileCam.disabled=blocked; filePick.disabled=blocked;
+  const blocked=v<=0; fileCam.disabled=blocked; filePick.disabled=blocked;
 }
-(function initCredits(){
-  const p=new URLSearchParams(location.search);
-  if(p.has('reset')) localStorage.removeItem(LS_KEY);
-  renderCredits();
-})();
+(function initCredits(){const p=new URLSearchParams(location.search); if(p.has('reset')) localStorage.removeItem(LS_KEY); renderCredits();})();
 
-// ====== 공통 유틸 ======
+/* ===== 유틸 ===== */
 function toBase64(file){return new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(file);});}
 function coupangAppUrl(q){return 'coupang://search?q='+encodeURIComponent(q)}
 function coupangWebUrl(q){const base='https://www.coupang.com/np/search';const params=new URLSearchParams({q,channel:'user',lptag:PARTNER_ID,subId:SUB_ID});return `${base}?${params.toString()}`}
-
 function buildSearchKeyword(product={}, fallback=''){
-  const parts=[];
-  if(product.brand) parts.push(product.brand);
-  if(product.model) parts.push(product.model);
-  if(product.name)  parts.push(product.name);
+  const parts=[]; if(product.brand)parts.push(product.brand); if(product.model)parts.push(product.model); if(product.name)parts.push(product.name);
   if(Array.isArray(product.attrs)) parts.push(...product.attrs.slice(0,3));
-  let q=parts.join(' ').replace(/\s+/g,' ').trim();
-  if(!q) q=(fallback||'').trim();
-  if(q.length>80) q=q.slice(0,80);
-  return q;
+  let q=parts.join(' ').replace(/\s+/g,' ').trim(); if(!q) q=(fallback||'').trim(); if(q.length>80) q=q.slice(0,80); return q;
 }
 
-// ====== 파일 선택 ======
+/* ===== 파일 선택 ===== */
 async function onPick(file){
   if(!file) return;
   if(loadCredits()<=0){ alert('잔여 건수가 없습니다. 광고 시청으로 충전해주세요.'); return; }
-
-  lastImageBlob = file;
-  imgPrev.src = URL.createObjectURL(file);
-  imgPrev.classList.remove('hidden');
-  btnAnalyze.classList.remove('hidden');
-  btnCoupangFlow.classList.remove('hidden');
-
-  // 새 이미지이므로 OCR 다시 필요
-  ocrDoneForThisImage = false;
-  lastOCR = null;
-
-  // 화면 위치 유지
+  lastImageBlob=file; imgPrev.src=URL.createObjectURL(file); imgPrev.classList.remove('hidden');
+  btnAnalyze.classList.remove('hidden'); btnCoupangFlow.classList.remove('hidden');
+  ocrDoneForThisImage=false; lastOCR=null;
 }
-fileCam.addEventListener('change', ()=> onPick(fileCam.files?.[0]));
-filePick.addEventListener('change', ()=> onPick(filePick.files?.[0]));
+fileCam.addEventListener('change',()=>onPick(fileCam.files?.[0]));
+filePick.addEventListener('change',()=>onPick(filePick.files?.[0]));
 
-// ====== OCR 실행 (한 번만 차감) ======
+/* ===== OCR (한 번만 차감) ===== */
 async function ensureOCR(){
   if(!lastImageBlob) throw new Error('이미지를 선택하세요.');
   if(lastOCR) return lastOCR;
-
-  // 차감은 여기서만
-  if(!ocrDoneForThisImage){
-    const cur = loadCredits();
-    if(cur<=0) throw new Error('잔여 건수가 없습니다.');
-    saveCredits(cur-1);
-    ocrDoneForThisImage = true;
-  }
-
+  if(!ocrDoneForThisImage){ const cur=loadCredits(); if(cur<=0) throw new Error('잔여 건수가 없습니다.'); saveCredits(cur-1); ocrDoneForThisImage=true; }
   if(USE_MOCK){
     await new Promise(r=>setTimeout(r,500));
-    lastOCR = {
-      product:{brand:'라코스테',model:'L1212',name:'폴로 티셔츠',attrs:['남성','반팔','화이트']},
-      coreSummary:'- 브랜드: 라코스테\n- 모델: L1212\n- 유형: 폴로 티셔츠\n- 특이사항: 면 100%, 기본핏',
-      categories:[
-        {title:'🧾 핵심요약',summary:'- 면 100%, 기본핏, 반팔\n- 세탁: 저온/손세탁 권장\n- 가격 체크: 쿠팡 최저가 확인 권장'},
-        {title:'👕 소재/관리',summary:'- 소재: 면 100%\n- 세탁: 찬물/중성세제, 건조기 지양'}
-      ]
-    };
+    lastOCR={ product:{brand:'라코스테',model:'L1212',name:'폴로 티셔츠',attrs:['남성','반팔','화이트']},
+      coreSummary:'- 브랜드: 라코스테\n- 모델: L1212\n- 유형: 폴로 티셔츠\n- 특이사항: 면 100%, 기본핏' };
     return lastOCR;
-  } else {
-    const base64 = await toBase64(lastImageBlob);
-    const r = await fetch(`${API_BASE}/api/summarize`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({imageBase64:base64,lang:'ko'})
-    });
-    const data = await r.json();
-    if(!r.ok || !data.success) throw new Error(data.message || '요약 실패');
-    lastOCR = data.payload;
-    return lastOCR;
+  }else{
+    const base64=await toBase64(lastImageBlob);
+    const r=await fetch(`${API_BASE}/api/summarize`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:base64,lang:'ko'})});
+    const data=await r.json(); if(!r.ok||!data.success) throw new Error(data.message||'요약 실패'); lastOCR=data.payload; return lastOCR;
   }
 }
 
-// ====== ① 작은 글씨 요약 (기존) ======
-$('btnAnalyze').addEventListener('click', async ()=>{
+/* ===== ① 작은 글씨 요약 ===== */
+btnAnalyze.addEventListener('click', async ()=>{
   try{
-    const payload = await ensureOCR();
-    // 카테고리 렌더
-    catsBox.innerHTML='';
-    (payload.categories||[]).forEach(c=>{
-      const b=document.createElement('button');
-      b.className='btn'; b.textContent=c.title||'-';
-      b.onclick=()=>alert((c.summary||'-')); // 간단 표시(원래 showAnswer 사용해도 됨)
-      catsBox.appendChild(b);
-    });
-    const core=document.createElement('button');
-    core.className='btn secondary'; core.textContent='🧾 핵심요약';
-    core.onclick=()=>alert(payload.coreSummary||'-');
-    catsBox.appendChild(core);
+    const payload=await ensureOCR();
+    sumReadOnly.value=(payload.coreSummary||'').trim() || '(요약 없음)';
+    stepUpload.classList.add('hidden'); stepSummary.classList.remove('hidden'); window.scrollTo({top:0,behavior:'smooth'});
+    // 쿠팡 바로가기(요약화면) 버튼은 현재 키워드로 즉시 이동
+    const kw=buildSearchKeyword(payload.product||{},'');
+    btnGoCoupangDirect.onclick=()=>{ if(!kw) return alert('검색어가 없습니다.'); const app=coupangAppUrl(kw), web=coupangWebUrl(kw); location.href=app; setTimeout(()=>window.open(web,'_blank','noopener,noreferrer'),400); };
+  }catch(e){ alert(e.message||'오류가 발생했습니다.'); }
+});
+btnBackSum.addEventListener('click', ()=>{ stepSummary.classList.add('hidden'); stepUpload.classList.remove('hidden'); });
 
-    stepUpload.classList.add('hidden');
-    stepCats.classList.remove('hidden');
-    window.scrollTo({top:0,behavior:'smooth'});
+/* ===== ② 쿠팡 플로우: 요약 한 칸 + 검색어 한 줄 ===== */
+btnCoupangFlow.addEventListener('click', async ()=>{
+  try{
+    const payload=await ensureOCR();
+    const baseSummary=(payload.coreSummary||'').trim();
+    const p=payload.product||{};
+    const infoLine=[p.brand,p.model,p.name,Array.isArray(p.attrs)?p.attrs.slice(0,3).join(', '):''].filter(Boolean).join(' · ');
+    $('sumBox').value=[baseSummary, infoLine?`\n\n[제품] ${infoLine}`:''].join('');
+    $('sumBox').readOnly=true; btnEditSum.textContent='✏️ 수정';
+    kwFinal.value=buildSearchKeyword(p,'');
+    stepUpload.classList.add('hidden'); stepCoupang.classList.remove('hidden'); window.scrollTo({top:0,behavior:'smooth'});
   }catch(e){ alert(e.message||'오류가 발생했습니다.'); }
 });
 
-// ====== ② 쿠팡 플로우: OCR → 편집 → 이동 ======
-$('btnCoupangFlow').addEventListener('click', async ()=>{
-  try{
-    const payload = await ensureOCR();
-    // 폼 채우기
-    kwBrand.value = payload.product?.brand || '';
-    kwModel.value = payload.product?.model || '';
-    kwName .value = payload.product?.name  || '';
-    kwAttrs.value = (payload.product?.attrs||[]).join(', ');
-    kwFinal.value = buildSearchKeyword(payload.product||{}, '');
-
-    stepUpload.classList.add('hidden');
-    stepCoupang.classList.remove('hidden');
-    window.scrollTo({top:0,behavior:'smooth'});
-  }catch(e){ alert(e.message||'오류가 발생했습니다.'); }
+let isEditingSummary=false;
+btnEditSum.addEventListener('click', ()=>{
+  isEditingSummary=!isEditingSummary;
+  sumBox.readOnly=!isEditingSummary;
+  btnEditSum.textContent=isEditingSummary?'✅ 수정 완료':'✏️ 수정';
+  if(!isEditingSummary){
+    const firstLine=(sumBox.value||'').split('\n').map(s=>s.trim()).filter(Boolean)[0]||'';
+    if(firstLine && !kwFinal.value.trim()) kwFinal.value=firstLine.slice(0,80);
+  }
 });
 
-// 자동 구성
-btnMakeKW.addEventListener('click', ()=>{
-  const attrs = kwAttrs.value.split(',').map(s=>s.trim()).filter(Boolean);
-  const product = {brand:kwBrand.value.trim(), model:kwModel.value.trim(), name:kwName.value.trim(), attrs};
-  kwFinal.value = buildSearchKeyword(product,'');
-});
-
-// 최저가 보러가기
 btnGoCoupang.addEventListener('click', ()=>{
-  const keyword = (kwFinal.value||'').trim();
+  const keyword=(kwFinal.value||'').trim();
   if(!keyword) return alert('검색어를 입력하세요.');
-  const appU=coupangAppUrl(keyword);
-  const webU=coupangWebUrl(keyword);
+  const appU=coupangAppUrl(keyword), webU=coupangWebUrl(keyword);
   location.href=appU; setTimeout(()=>window.open(webU,'_blank','noopener,noreferrer'),400);
 });
 
-// 뒤로가기들
-btnBack1.addEventListener('click', ()=>{ resetToUpload(); });
 btnBack2.addEventListener('click', ()=>{ stepCoupang.classList.add('hidden'); stepUpload.classList.remove('hidden'); });
 
-// 리셋
-function resetToUpload(){
-  fileCam.value=''; filePick.value='';
-  imgPrev.src=''; imgPrev.classList.add('hidden');
-  btnAnalyze.classList.add('hidden'); btnCoupangFlow.classList.add('hidden');
-  lastImageBlob=null; lastOCR=null; ocrDoneForThisImage=false;
-  stepCats.classList.add('hidden'); stepCoupang.classList.add('hidden'); stepUpload.classList.remove('hidden');
-  renderCredits();
-}
-
-// 보상형 광고(+1)
+/* ===== 보상형 광고(+1) ===== */
 btnReward.addEventListener('click', ()=>{ saveCredits(loadCredits()+1); alert('광고 시청 완료! 1회 충전되었습니다.'); });
-
 </script>
 </body>
 </html>
