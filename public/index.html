@@ -43,7 +43,6 @@
     .hidden{display:none}
     .answer{white-space:pre-wrap; line-height:1.85; font-size:18px}
     .bul{margin:0; padding-left:1.1em} .bul li{margin:.25em 0}
-    .banner-ad{margin-top:10px; border:1px dashed var(--line); border-radius:12px; padding:12px; text-align:center; color:#9fb1ff; background:#101738}
   </style>
 </head>
 <body>
@@ -85,10 +84,12 @@
     </div>
 
     <img id="img" class="preview hidden" alt="preview"/>
-    <div style="height:10px"></div>
-    <button id="btnAnalyze" class="btn hidden">🔍 작은 글씨 요약</button>
 
-    <div class="banner-ad">배너 광고 영역 (플레이스홀더)</div>
+    <!-- 액션 버튼: 요약 + 쿠팡(옆자리) -->
+    <div class="grid2" id="actionRow" style="margin-top:8px">
+      <button id="btnAnalyze" class="btn hidden">🔍 작은 글씨 요약</button>
+      <button id="btnCoupang" class="btn secondary hidden">🛒 쿠팡 최저가 바로가기</button>
+    </div>
   </section>
 
   <!-- STEP 2: 카테고리 -->
@@ -103,7 +104,6 @@
   <section id="step-answer" class="card hidden">
     <h2 id="answerTitle" style="margin:0 0 6px"></h2>
     <div id="answer" class="answer"></div>
-    <!-- 쿠팡 버튼이 여기 붙습니다 -->
     <div style="height:12px"></div>
     <div class="grid2">
       <button id="btnBack" class="btn secondary">⬅ 카테고리로 돌아가기</button>
@@ -111,22 +111,21 @@
     </div>
   </section>
 
-  <!-- 보상형 광고 -->
+  <!-- ✅ 보상형 광고만 유지 -->
   <section class="card">
     <h3 style="margin:0 0 6px">🎁 보상형 광고</h3>
     <p class="muted" style="margin:0 0 8px">광고를 시청하면 이용 가능 건수가 <strong>1회</strong> 충전됩니다.</p>
     <button id="btnReward" class="btn">광고 보고 1회 충전</button>
-    <div id="rewardContainer" class="muted" style="margin-top:8px">리워드 광고 영역 (플레이스홀더)</div>
+    <div id="rewardContainer" class="muted" style="margin-top:8px">리워드 광고 영역</div>
   </section>
 </main>
 
 <script>
   // ===== 설정 =====
-  // API 서버 주소 (비우면 Mock로 동작해 바로 테스트 가능)
-  const API_BASE = ''; // 예: 'https://your-server.com'
+  const API_BASE = '';           // 서버 넣으면 실제 요약, 비우면 Mock 응답
   const USE_MOCK = !API_BASE;
 
-  // 크레딧(건수)
+  // 크레딧
   const MAX_CREDITS = 9999;
   const DEFAULT_CREDITS = 3;
   const LS_KEY_CREDITS = 'be_credits_v08';
@@ -134,6 +133,9 @@
   // 쿠팡 파트너스
   const PARTNER_ID = 'AF2974050';
   const SUB_ID     = 'bigeyes';
+
+  // 상태
+  let lastKeyword = ''; // 요약에서 만든 검색 키워드
 
   // ===== 유틸 =====
   const $ = (id)=>document.getElementById(id);
@@ -146,6 +148,7 @@
   const inputFile   = $('inputFile');
   const img         = $('img');
   const btnAnalyze  = $('btnAnalyze');
+  const btnCoupang  = $('btnCoupang');
   const catsWrap    = $('cats');
   const answerBox   = $('answer');
   const answerTitle = $('answerTitle');
@@ -174,7 +177,7 @@
     const blocked = v <= 0;
     inputCamera.disabled = blocked;
     inputFile.disabled   = blocked;
-    if (blocked) { img.classList.add('hidden'); btnAnalyze.classList.add('hidden'); }
+    if (blocked) { img.classList.add('hidden'); btnAnalyze.classList.add('hidden'); btnCoupang.classList.add('hidden'); }
   }
 
   // reset 지원
@@ -191,6 +194,8 @@
     img.src = URL.createObjectURL(file);
     img.classList.remove('hidden');
     btnAnalyze.classList.remove('hidden');
+    btnCoupang.classList.add('hidden'); // 새 이미지 선택 시 버튼 초기화
+    lastKeyword = '';
   }
   inputCamera.addEventListener('change', ()=> onFilePicked(inputCamera.files?.[0]));
   inputFile  .addEventListener('change', ()=> onFilePicked(inputFile.files?.[0]));
@@ -210,7 +215,7 @@
     return `${base}?${params.toString()}`;
   }
 
-  // 검색 키워드 생성(요약 결과 → 키워드)
+  // 키워드 생성
   function buildSearchKeyword(product={}, fallbackTitle=''){
     const parts = [];
     if (product.brand) parts.push(product.brand);
@@ -223,27 +228,16 @@
     return q;
   }
 
-  // 쿠팡 버튼 부착
-  function attachCoupangButton(containerEl, keyword){
-    // 기존 버튼 중복 방지
-    const old = containerEl.querySelector('[data-coupang-btn]');
-    if (old) old.remove();
-
-    const wrap = document.createElement('div');
-    wrap.style.marginTop='10px';
-    const btn = document.createElement('button');
-    btn.setAttribute('data-coupang-btn','1');
-    btn.className = 'btn';
-    btn.textContent = '🛒 쿠팡에서 최저가 보기';
-    btn.addEventListener('click', ()=>{
-      if(!keyword){ alert('검색 키워드를 찾지 못했습니다.'); return; }
-      const appU = coupangAppUrl(keyword);
-      const webU = coupangWebUrl(keyword);
-      location.href = appU; // 앱 우선
+  // 쿠팡 버튼 활성화
+  function enableCoupangButton() {
+    if (!lastKeyword) { btnCoupang.classList.add('hidden'); return; }
+    btnCoupang.classList.remove('hidden');
+    btnCoupang.onclick = () => {
+      const appU = coupangAppUrl(lastKeyword);
+      const webU = coupangWebUrl(lastKeyword);
+      location.href = appU;                           // 앱 우선
       setTimeout(()=> window.open(webU,'_blank','noopener,noreferrer'), 400); // 웹 폴백
-    });
-    wrap.appendChild(btn);
-    containerEl.appendChild(wrap);
+    };
   }
 
   // 분석 실행
@@ -260,8 +254,8 @@
       saveCredits(loadCredits()-1);
 
       let data;
-      if (USE_MOCK){
-        // 모의 응답: 바로 동작 확인용
+      if (!API_BASE){
+        // Mock 응답
         await new Promise(r=>setTimeout(r, 500));
         data = {
           success:true,
@@ -287,7 +281,11 @@
       const payload = data.payload || { categories:[], coreSummary:'-' };
       window.lastPayload = payload;
 
-      // 카테고리 표시
+      // 키워드 → 쿠팡 버튼 활성화 (STEP1 옆자리)
+      lastKeyword = buildSearchKeyword(payload.product || {}, '');
+      enableCoupangButton();
+
+      // 카테고리 표시(결과 단계에서도 볼 수 있게)
       renderCategories(payload);
       stepUpload.classList.add('hidden');
       stepCats.classList.remove('hidden');
@@ -319,7 +317,6 @@
       b.addEventListener('click', ()=> showAnswer(c.title, toBullets(c.summary), payload));
       catsWrap.appendChild(b);
     });
-    // 핵심요약 버튼(항상 제공)
     const coreBtn = document.createElement('button');
     coreBtn.className = 'btn secondary block';
     coreBtn.textContent = '🧾 핵심요약';
@@ -331,9 +328,9 @@
     answerTitle.textContent = title || '결과';
     answerBox.innerHTML = html || '<ul class="bul"><li>-</li></ul>';
 
-    // 쿠팡 버튼 부착
-    const keyword = buildSearchKeyword(payload?.product || {}, title);
-    attachCoupangButton(answerBox, keyword);
+    // 결과 화면에도 최근 키워드 적용
+    lastKeyword = lastKeyword || buildSearchKeyword(payload?.product || {}, title);
+    enableCoupangButton(); // 상단 버튼 상태 갱신(동일 로직 재사용)
 
     stepCats.classList.add('hidden');
     stepAnswer.classList.remove('hidden');
@@ -344,6 +341,9 @@
     inputCamera.value=''; inputFile.value='';
     img.src=''; img.classList.add('hidden');
     btnAnalyze.classList.add('hidden');
+    btnCoupang.classList.add('hidden');
+    lastKeyword = '';
+
     stepAnswer.classList.add('hidden');
     stepCats.classList.add('hidden');
     stepUpload.classList.remove('hidden');
@@ -357,11 +357,16 @@
     window.scrollTo({ top:0, behavior:'smooth' });
   });
 
-  // 리워드(시뮬): +1
+  // ✅ 보상형 광고만 유지 (여기에 실제 SDK 연결)
   btnReward.addEventListener('click', ()=>{
+    // 예: AdMob/Unity 등 SDK 완료 콜백에서 호출
+    // admob.rewarded.show().then(onRewarded)
+    onRewarded();
+  });
+  function onRewarded(){
     saveCredits(loadCredits()+1);
     alert('광고 시청 완료! 1회 충전되었습니다.');
-  });
+  }
 </script>
 </body>
 </html>
