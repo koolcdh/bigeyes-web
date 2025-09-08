@@ -23,10 +23,10 @@ main{max-width:900px;margin:0 auto;padding:16px;display:grid;gap:14px}
 input[type="file"]{display:none}
 input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #2a3a7a;background:#0e1430;color:#e8ecff}
 textarea.summary-box{
-  width:100%; min-height:160px; padding:12px 14px;
+  width:100%; min-height:220px; padding:12px 14px;
   border-radius:12px; border:1px solid #2a3a7a;
   background:#0e1430; color:#e8ecff; line-height:1.7; font-size:15px;
-  resize:vertical;
+  white-space:pre-wrap; resize:vertical;
 }
 .preview{width:100%;max-height:380px;object-fit:contain;border-radius:12px;border:1px solid var(--line)}
 .hidden{display:none}
@@ -77,15 +77,15 @@ textarea.summary-box{
     <p class="small">※ 같은 사진에 대해 OCR은 한 번만 차감됩니다.</p>
   </section>
 
-  <!-- STEP 2-A: 간단 요약 화면(읽기 전용) -->
+  <!-- STEP 2-A: 보고서 형태 요약(읽기 전용) -->
   <section id="stepSummary" class="card hidden">
-    <h2 class="section-title">2) 요약 결과</h2>
+    <h2 class="section-title">2) 요약 결과(보고서)</h2>
     <textarea id="sumReadOnly" class="summary-box" readonly></textarea>
-    <div class="row" style="grid-template-columns:1fr auto;align-items:center">
+    <div class="row" style="grid-template-columns:1fr;align-items:center">
+      <!-- 요청: 이 화면에서는 최저가 버튼을 노출하지 않음 -->
       <button id="btnBackSum" class="btn secondary">⬅ 이전 화면으로</button>
-      <button id="btnGoCoupangDirect" class="btn">🛒 최저가 보러가기</button>
     </div>
-    <p class="small">※ 바로 이동 시, 아래 화면에서 검색어를 수정하지 않고 진행합니다.</p>
+    <p class="small">※ 최저가 이동은 다음 화면(검색어 확인 단계)에서 진행할 수 있어요.</p>
   </section>
 
   <!-- STEP 2-B: 쿠팡 키워드 확인/수정 -->
@@ -122,14 +122,14 @@ textarea.summary-box{
 const API_BASE = window.location.origin;
 const USE_MOCK = false; // 만약 이 변수가 있다면 강제로 실서버 모드
 const PARTNER_ID = 'AF2974050';      // 쿠팡 파트너스
-const SUB_ID     = 'bigeyes';        // 추적 구분자(원하면 변경)
+const SUB_ID     = 'bigeyes';        // 추적 구분자
 const LS_KEY = 'be_credits_v08';
 const DEFAULT_CREDITS = 3;
 const MAX_CREDITS = 9999;
 
 /* ===== 상태/요소 ===== */
 let lastImageBlob = null;
-let lastOCR = null;                  // { product, coreSummary }
+let lastOCR = null;                  // { product, coreSummary, categories[] ... }
 let ocrDoneForThisImage = false;
 
 const $ = id => document.getElementById(id);
@@ -137,7 +137,7 @@ const creditTop=$('creditTop'), creditTop2=$('creditTop2');
 const stepUpload=$('stepUpload'), stepSummary=$('stepSummary'), stepCoupang=$('stepCoupang');
 const fileCam=$('fileCam'), filePick=$('filePick'), imgPrev=$('imgPrev');
 const btnAnalyze=$('btnAnalyze'), btnCoupangFlow=$('btnCoupangFlow');
-const sumReadOnly=$('sumReadOnly'), btnBackSum=$('btnBackSum'), btnGoCoupangDirect=$('btnGoCoupangDirect');
+const sumReadOnly=$('sumReadOnly'), btnBackSum=$('btnBackSum');
 const sumBox=$('sumBox'), btnEditSum=$('btnEditSum'), kwFinal=$('kwFinal');
 const btnBack2=$('btnBack2'), btnGoCoupang=$('btnGoCoupang');
 const btnReward=$('btnReward');
@@ -155,7 +155,24 @@ function renderCredits(v=loadCredits()){
 (function initCredits(){const p=new URLSearchParams(location.search); if(p.has('reset')) localStorage.removeItem(LS_KEY); renderCredits();})();
 
 /* ===== 유틸 ===== */
-function toBase64(file){return new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(file);});}
+// 전송 전 이미지 리사이즈/압축 (긴 변 1600px, JPEG q=0.8)
+async function toBase64(file, maxSide=1600, quality=0.8){
+  const img = await new Promise(res=>{
+    const i = new Image();
+    i.onload = ()=>res(i);
+    i.src = URL.createObjectURL(file);
+  });
+  const {width, height} = img;
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  const w = Math.round(width * scale), h = Math.round(height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  const dataUrl = canvas.toDataURL('image/jpeg', quality);
+  return dataUrl.split(',')[1]; // base64만 반환
+}
+
 function coupangAppUrl(q){return 'coupang://search?q='+encodeURIComponent(q)}
 function coupangWebUrl(q){const base='https://www.coupang.com/np/search';const params=new URLSearchParams({q,channel:'user',lptag:PARTNER_ID,subId:SUB_ID});return `${base}?${params.toString()}`}
 function buildSearchKeyword(product={}, fallback=''){
@@ -175,6 +192,38 @@ async function onPick(file){
 fileCam.addEventListener('change',()=>onPick(fileCam.files?.[0]));
 filePick.addEventListener('change',()=>onPick(filePick.files?.[0]));
 
+/* ===== 보고서 렌더러 ===== */
+function buildReport(payload){
+  const lines=[];
+  const domain = payload.domain ? `(${payload.domain})` : '';
+  lines.push(`📝 보고서 ${domain}`.trim());
+  lines.push('');
+  // 핵심 요약
+  const core = (payload.coreSummary||'').trim();
+  if(core){
+    lines.push('■ 핵심 요약');
+    for(const l of core.split('\n').filter(Boolean)){
+      const t = l.replace(/^\-\s?/, '').trim();
+      lines.push(' - ' + t);
+    }
+    lines.push('');
+  }
+  // 카테고리
+  const cats = Array.isArray(payload.categories)? payload.categories : [];
+  for(const c of cats){
+    const title = c.title || c.key || '세부정보';
+    const sum = String(c.summary||'').trim();
+    if(!sum) continue;
+    lines.push(`■ ${title}`);
+    for(const l of sum.split('\n').filter(Boolean)){
+      const t = l.replace(/^\-\s?/, '').trim();
+      lines.push(' - ' + t);
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
 /* ===== OCR (한 번만 차감) ===== */
 async function ensureOCR(){
   if(!lastImageBlob) throw new Error('이미지를 선택하세요.');
@@ -182,28 +231,50 @@ async function ensureOCR(){
   if(!ocrDoneForThisImage){ const cur=loadCredits(); if(cur<=0) throw new Error('잔여 건수가 없습니다.'); saveCredits(cur-1); ocrDoneForThisImage=true; }
   if(USE_MOCK){
     await new Promise(r=>setTimeout(r,500));
-    lastOCR={ product:{brand:'라코스테',model:'L1212',name:'폴로 티셔츠',attrs:['남성','반팔','화이트']},
-      coreSummary:'- 브랜드: 라코스테\n- 모델: L1212\n- 유형: 폴로 티셔츠\n- 특이사항: 면 100%, 기본핏' };
+    lastOCR={ 
+      product:{brand:'라코스테',model:'L1212',name:'폴로 티셔츠',attrs:['남성','반팔','화이트']},
+      coreSummary:'- 브랜드: 라코스테\n- 모델: L1212\n- 유형: 폴로 티셔츠\n- 특이사항: 면 100%, 기본핏',
+      domain:'product_page',
+      categories:[
+        {key:'features', title:'✨ 핵심특징', summary:'- 면 100%\n- 기본핏\n- 카라 디자인'},
+        {key:'price', title:'💰 가격·조건', summary:'- 변동 가능\n- 쿠팡에서 확인'},
+        {key:'warnings', title:'⚠️ 주의', summary:'- 세탁 시 주의'}
+      ]
+    };
     return lastOCR;
   }else{
     const base64=await toBase64(lastImageBlob);
-    const r=await fetch(`${API_BASE}/api/summarize`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageBase64:base64,lang:'ko'})});
-    const data=await r.json(); if(!r.ok||!data.success) throw new Error(data.message||'요약 실패'); lastOCR=data.payload; return lastOCR;
+    const r=await fetch(`${API_BASE}/api/summarize`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({imageBase64:base64,lang:'ko'})
+    });
+    let data;
+    try{ data=await r.json(); }
+    catch{
+      const text=await r.text().catch(()=> '');
+      if(r.status===413 || /Entity Too Large/i.test(text)) throw new Error('이미지가 너무 큽니다. 사진 해상도를 낮추거나 압축 후 다시 시도하세요.');
+      throw new Error(text?.slice(0,120) || '서버 응답을 읽지 못했습니다.');
+    }
+    if(!r.ok || !data?.success) throw new Error(data?.message||'요약 실패');
+    lastOCR=data.payload; 
+    return lastOCR;
   }
 }
 
-/* ===== ① 작은 글씨 요약 ===== */
+/* ===== ① 작은 글씨 요약(보고서 화면으로) ===== */
 btnAnalyze.addEventListener('click', async ()=>{
   try{
     const payload=await ensureOCR();
-    sumReadOnly.value=(payload.coreSummary||'').trim() || '(요약 없음)';
-    stepUpload.classList.add('hidden'); stepSummary.classList.remove('hidden'); window.scrollTo({top:0,behavior:'smooth'});
-    // 쿠팡 바로가기(요약화면) 버튼은 현재 키워드로 즉시 이동
-    const kw=buildSearchKeyword(payload.product||{},'');
-    btnGoCoupangDirect.onclick=()=>{ if(!kw) return alert('검색어가 없습니다.'); const app=coupangAppUrl(kw), web=coupangWebUrl(kw); location.href=app; setTimeout(()=>window.open(web,'_blank','noopener,noreferrer'),400); };
+    sumReadOnly.value=buildReport(payload);
+    stepUpload.classList.add('hidden'); 
+    stepSummary.classList.remove('hidden'); 
+    window.scrollTo({top:0,behavior:'smooth'});
   }catch(e){ alert(e.message||'오류가 발생했습니다.'); }
 });
-btnBackSum.addEventListener('click', ()=>{ stepSummary.classList.add('hidden'); stepUpload.classList.remove('hidden'); });
+btnBackSum.addEventListener('click', ()=>{
+  stepSummary.classList.add('hidden'); 
+  stepUpload.classList.remove('hidden'); 
+});
 
 /* ===== ② 쿠팡 플로우: 요약 한 칸 + 검색어 한 줄 ===== */
 btnCoupangFlow.addEventListener('click', async ()=>{
@@ -237,10 +308,16 @@ btnGoCoupang.addEventListener('click', ()=>{
   location.href=appU; setTimeout(()=>window.open(webU,'_blank','noopener,noreferrer'),400);
 });
 
-btnBack2.addEventListener('click', ()=>{ stepCoupang.classList.add('hidden'); stepUpload.classList.remove('hidden'); });
+btnBack2.addEventListener('click', ()=>{ 
+  stepCoupang.classList.add('hidden'); 
+  stepUpload.classList.remove('hidden'); 
+});
 
 /* ===== 보상형 광고(+1) ===== */
-btnReward.addEventListener('click', ()=>{ saveCredits(loadCredits()+1); alert('광고 시청 완료! 1회 충전되었습니다.'); });
+btnReward.addEventListener('click', ()=>{ 
+  saveCredits(loadCredits()+1); 
+  alert('광고 시청 완료! 1회 충전되었습니다.'); 
+});
 </script>
 </body>
 </html>
