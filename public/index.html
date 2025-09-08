@@ -203,16 +203,6 @@ fileCam.addEventListener('change', (e)=>{
   const f = e.target.files && e.target.files[0];
   onPick(f, 'cam');
 });
-filePick.addEventListener('change', (e)=>{
-  const f = e.target.files && e.target.files[0];
-  onPick(f, 'pick');
-});
-
-// (옵션) 라벨 클릭 보조: 일부 브라우저에서 더 안정적으로 열리게
-const camLabel = document.querySelector('label input#fileCam')?.parentElement;
-const pickLabel = document.querySelector('label input#filePick')?.parentElement;
-camLabel && camLabel.addEventListener('click', ()=>{ if (!fileCam.disabled) fileCam.click(); });
-pickLabel && pickLabel.addEventListener('click', ()=>{ if (!filePick.disabled) filePick.click(); });
 
 
 /* ===== 로딩 토글 ===== */
