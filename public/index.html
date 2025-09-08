@@ -66,7 +66,7 @@ textarea.summary-box{
   <section class="card">
     <div class="lead">
       <strong>사진 속 작은 글씨 요약</strong> + <strong>쿠팡 최저가 바로가기</strong><br/>
-      가입 X, 이용정보 저장 X, 편하게 사용하세요
+      가입 X 이용정보 저장 X 편하게 사용하세요
     </div>
   </section>
 
@@ -95,7 +95,7 @@ textarea.summary-box{
       <button id="btnAnalyze" class="btn hidden">🔍 작은 글씨 요약</button>
       <button id="btnCoupangFlow" class="btn secondary hidden">🛒 쿠팡 최저가 가기</button>
     </div>
-    <p class="small">사진선택 -> 요약/※ 같은 사진에 대해 OCR은 한 번만 차감됩니다.</p>
+    <p class="small">사진선택 -> 요약/최저가 선택 -> 결과확인/검색어 확인 후 쿠팡 연결</p>
   </section>
 
   <!-- STEP 2-A: 보고서 형태 요약(읽기 전용) -->
@@ -163,46 +163,6 @@ const sumBox=$('sumBox'), btnEditSum=$('btnEditSum'), kwFinal=$('kwFinal');
 const btnBack2=$('btnBack2'), btnGoCoupang=$('btnGoCoupang');
 const btnReward=$('btnReward');
 const loadingOverlay=$('loadingOverlay');
-// 파일 선택 처리: 미리보기 표시 + 버튼 노출 + 같은 파일 재선택 대응
-async function onPick(file, from){
-  try{
-    if(!file) return;
-
-    // 선택 파일 기억 (OCR은 ensureOCR에서 처리/차감)
-    lastImageBlob = file;
-
-    // 모바일 호환성 좋은 FileReader로 미리보기
-    const dataUrl = await new Promise((resolve, reject)=>{
-      const fr = new FileReader();
-      fr.onload = ()=>resolve(fr.result);
-      fr.onerror = ()=>reject(new Error('이미지 로드 실패'));
-      fr.readAsDataURL(file);
-    });
-
-    // 미리보기 띄우기
-    imgPrev.src = dataUrl;
-    imgPrev.classList.remove('hidden');
-
-    // 다음 단계 버튼 노출
-    btnAnalyze.classList.remove('hidden');
-    btnCoupangFlow.classList.remove('hidden');
-
-    // 같은 파일 다시 골라도 change가 뜨도록 리셋
-    if(from === 'cam')  fileCam.value = '';
-    if(from === 'pick') filePick.value = '';
-
-    // 이전 OCR 상태 초기화
-    ocrDoneForThisImage = false;
-    lastOCR = null;
-  }catch(err){
-    alert((err && err.message) || '이미지를 불러오지 못했습니다.');
-  }
-}
-// 파일 입력 change 이벤트 연결
-fileCam.addEventListener('change', (e)=>{
-  const f = e.target.files && e.target.files[0];
-  onPick(f, 'cam');
-});
 
 
 /* ===== 로딩 토글 ===== */
