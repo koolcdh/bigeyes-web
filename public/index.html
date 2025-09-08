@@ -68,6 +68,9 @@ textarea.summary-box{
       <strong>사진 속 작은 글씨 요약</strong> + <strong>쿠팡 최저가 바로가기</strong><br/>
       가입 X 이용정보 저장 X 편하게 사용하세요
     </div>
+    <p style="text-align:center;margin:8px 0 0">
+      <span id="creditTop" class="credit">(이용 가능 건수 : 0000건)</span>
+    </p>
   </section>
 
   <!-- STEP 1: 업로드 -->
@@ -95,7 +98,7 @@ textarea.summary-box{
       <button id="btnAnalyze" class="btn hidden">🔍 작은 글씨 요약</button>
       <button id="btnCoupangFlow" class="btn secondary hidden">🛒 쿠팡 최저가 가기</button>
     </div>
-    <p class="small">사진선택 -> 요약/최저가 선택 -> 결과확인/검색어 확인 후 쿠팡 연결</p>
+    <p class="small">※ 같은 사진에 대해 OCR은 한 번만 차감됩니다.</p>
   </section>
 
   <!-- STEP 2-A: 보고서 형태 요약(읽기 전용) -->
@@ -163,7 +166,6 @@ const sumBox=$('sumBox'), btnEditSum=$('btnEditSum'), kwFinal=$('kwFinal');
 const btnBack2=$('btnBack2'), btnGoCoupang=$('btnGoCoupang');
 const btnReward=$('btnReward');
 const loadingOverlay=$('loadingOverlay');
-
 
 /* ===== 로딩 토글 ===== */
 function showLoading(on=true){
