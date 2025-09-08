@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>👀 BigEyes · 쿠팡 최저가</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>👀 BigEyes · 사진 요약 + 쿠팡 최저가</title>
   <meta name="theme-color" content="#0b1020"/>
   <style>
     :root { --bg:#0b1020; --card:#121833; --ink:#e8ecff; --muted:#9aa5d1; --accent:#7aa2ff; --line:#223066; }
@@ -38,116 +38,125 @@
     .btn.secondary{background:#0e1430; border-color:#2a3a7a; color:#c9d3ff; font-weight:600}
     .btn.block{width:100%}
     .btn[disabled]{opacity:.55; cursor:not-allowed}
-    input[type="text"]{
-      width:100%; padding:14px 14px; border-radius:12px; border:1px solid #2a3a7a; background:#0e1430; color:var(--ink); font-size:16px;
-    }
-    .tagrow{display:flex; flex-wrap:wrap; gap:8px}
-    .tag{padding:8px 12px; border:1px solid #2a3a7a; border-radius:999px; cursor:pointer; background:#0e1430; color:#cfe0ff; font-size:14px}
+    input[type="file"]{display:none}
+    .preview{width:100%; max-height:380px; object-fit:contain; border-radius:12px; border:1px solid var(--line)}
+    .hidden{display:none}
+    .answer{white-space:pre-wrap; line-height:1.85; font-size:18px}
+    .bul{margin:0; padding-left:1.1em} .bul li{margin:.25em 0}
     .banner-ad{margin-top:10px; border:1px dashed var(--line); border-radius:12px; padding:12px; text-align:center; color:#9fb1ff; background:#101738}
-    a { color: var(--accent); text-decoration: none; }
-    .center{ text-align:center }
   </style>
 </head>
 <body>
 <header>
-  <h1>👀 BigEyes · 쿠팡 최저가</h1>
+  <h1>👀 BigEyes · 사진 요약 + 쿠팡 최저가</h1>
 </header>
 
 <main>
   <!-- 인트로 -->
   <section class="card">
     <div class="lead">
-      <strong>현명한 소비! 쿠팡에서 최저가 바로 찾기</strong><br/>
-      아래에 “브랜드/모델명/키워드”를 입력하고 검색하면<br/>
-      쿠팡 앱(설치 시)으로 바로 열리고, 없으면 웹으로 열립니다.
+      <strong>사진 속 작은 글씨를 한눈에 요약</strong><br/>
+      그리고 추출한 키워드로 <strong>쿠팡 최저가 바로가기</strong>까지!
     </div>
-    <p class="center" style="margin:8px 0 0">
+    <p class="center" style="margin:8px 0 0; text-align:center">
       <span id="creditMeter" class="credit">(이용 가능 건수 : 0000건)</span>
     </p>
-    <p class="center" style="margin:8px 0 0; font-size:13px">
+    <p class="center" style="margin:8px 0 0; font-size:13px; text-align:center">
       <a href="/privacy.html">개인정보처리방침</a> · <a href="/terms.html">이용약관</a>
     </p>
   </section>
 
-  <!-- 검색 -->
-  <section class="card" id="searchCard">
+  <!-- STEP 1: 업로드 -->
+  <section id="step-upload" class="card">
+    <div class="row" style="grid-template-columns:1fr auto; align-items:center">
+      <h2 style="margin:0">1) 사진 선택</h2>
+      <div class="credit" id="creditMeter2"></div>
+    </div>
+
     <div class="row">
-      <label for="q"><strong>검색어</strong></label>
-      <input id="q" type="text" placeholder="예) 라코스테 폴로 티셔츠 남성"/>
-      <div class="grid2">
-        <button id="btnSearch" class="btn">🔎 쿠팡에서 최저가 검색</button>
-        <button id="btnClear" class="btn secondary">🧹 지우기</button>
-      </div>
+      <label class="btn block">
+        📷 카메라로 찍기
+        <input id="inputCamera" type="file" accept="image/*" capture="environment">
+      </label>
+      <label class="btn block">
+        📁 파일에서 선택
+        <input id="inputFile" type="file" accept="image/*">
+      </label>
+    </div>
 
-      <div class="tagrow" id="quickTags">
-        <!-- 인기·빠른 검색 태그 -->
-        <span class="tag">애플워치 SE 스트랩</span>
-        <span class="tag">버즈3 프로</span>
-        <span class="tag">라코스테 폴로</span>
-        <span class="tag">아디다스 슈퍼스타</span>
-        <span class="tag">샤오미 선풍기</span>
-        <span class="tag">LG 27인치 모니터</span>
-      </div>
+    <img id="img" class="preview hidden" alt="preview"/>
+    <div style="height:10px"></div>
+    <button id="btnAnalyze" class="btn hidden">🔍 작은 글씨 요약</button>
 
-      <div class="banner-ad">배너 광고 영역 (플레이스홀더)</div>
+    <div class="banner-ad">배너 광고 영역 (플레이스홀더)</div>
+  </section>
+
+  <!-- STEP 2: 카테고리 -->
+  <section id="step-categories" class="card hidden">
+    <h2 style="margin:0 0 8px">2) 카테고리 선택</h2>
+    <div id="cats" class="row"></div>
+    <div style="height:10px"></div>
+    <button id="btnRetry1" class="btn secondary">↻ 다시 찍기</button>
+  </section>
+
+  <!-- STEP 3: 결과 -->
+  <section id="step-answer" class="card hidden">
+    <h2 id="answerTitle" style="margin:0 0 6px"></h2>
+    <div id="answer" class="answer"></div>
+    <!-- 쿠팡 버튼이 여기 붙습니다 -->
+    <div style="height:12px"></div>
+    <div class="grid2">
+      <button id="btnBack" class="btn secondary">⬅ 카테고리로 돌아가기</button>
+      <button id="btnRetry2" class="btn secondary">↻ 다시 찍기</button>
     </div>
   </section>
 
-  <!-- 보상형 광고(충전) -->
+  <!-- 보상형 광고 -->
   <section class="card">
-    <h3 style="margin:0 0 8px">🎁 보상형 광고</h3>
+    <h3 style="margin:0 0 6px">🎁 보상형 광고</h3>
     <p class="muted" style="margin:0 0 8px">광고를 시청하면 이용 가능 건수가 <strong>1회</strong> 충전됩니다.</p>
     <button id="btnReward" class="btn">광고 보고 1회 충전</button>
     <div id="rewardContainer" class="muted" style="margin-top:8px">리워드 광고 영역 (플레이스홀더)</div>
   </section>
-
-  <!-- 도움말 -->
-  <section class="card">
-    <h3 style="margin:0 0 8px">ℹ️ 팁</h3>
-    <ul class="muted" style="margin:0; padding-left:1.2em; line-height:1.9">
-      <li>검색 시 1건이 차감됩니다. (충전: 상단 ‘보상형 광고’)</li>
-      <li>앱이 설치되어 있으면 쿠팡 <em>앱</em>으로, 아니면 <em>웹</em>으로 자동 연결됩니다.</li>
-      <li>초기 건수 변경: <code>DEFAULT_CREDITS</code> 값을 수정하거나 <code>?reset=1</code>로 초기화.</li>
-    </ul>
-  </section>
 </main>
 
 <script>
-  // ===== 파트너스/설정 =====
-  const PARTNER_ID = 'AF2974050'; // ✅ 쿠팡 파트너스 ID
-  const SUB_ID = 'bigeyes';       // 리포트 구분용(필요 없으면 공백 OK)
+  // ===== 설정 =====
+  // API 서버 주소 (비우면 Mock로 동작해 바로 테스트 가능)
+  const API_BASE = ''; // 예: 'https://your-server.com'
+  const USE_MOCK = !API_BASE;
 
-  // ⚠️ 링크 전략
-  // 1) 쿠팡 앱 딥링크 우선: coupang://search?q=키워드
-  // 2) 웹 fallback: https://www.coupang.com/np/search?q=키워드
-  // 3) 추적 태그: lptag=PARTNER_ID & subId=SUB_ID (필요 시 조정)
-  //
-  // ※ 쿠팡 파트너스의 세부 추적 파라미터는 운영 정책/계정별로 다를 수 있어
-  //   아래 makeWebUrl()의 파라미터는 상단 PARTNER_ID에서 일괄 관리하도록 구성함.
-
-  function makeAppUrl(q){
-    return 'coupang://search?q=' + encodeURIComponent(q);
-  }
-  function makeWebUrl(q){
-    const base = 'https://www.coupang.com/np/search';
-    const params = new URLSearchParams({
-      q: q,
-      channel: 'user',
-      // 아래 두 파라미터는 파트너스 추적용으로 사용.
-      // 필요 시 본인 정책에 맞게 유지/수정 가능.
-      lptag: PARTNER_ID,
-      subId: SUB_ID
-    });
-    return `${base}?${params.toString()}`;
-  }
-
-  // ===== 크레딧(건수) =====
+  // 크레딧(건수)
   const MAX_CREDITS = 9999;
-  const DEFAULT_CREDITS = 3;              // ← 초기 건수(원하면 변경)
+  const DEFAULT_CREDITS = 3;
   const LS_KEY_CREDITS = 'be_credits_v08';
-  const elCreditMeter = document.getElementById('creditMeter');
+
+  // 쿠팡 파트너스
+  const PARTNER_ID = 'AF2974050';
+  const SUB_ID     = 'bigeyes';
+
+  // ===== 유틸 =====
+  const $ = (id)=>document.getElementById(id);
+  const elCreditMeter  = $('creditMeter');
+  const elCreditMeter2 = $('creditMeter2');
+  const stepUpload = $('step-upload');
+  const stepCats   = $('step-categories');
+  const stepAnswer = $('step-answer');
+  const inputCamera = $('inputCamera');
+  const inputFile   = $('inputFile');
+  const img         = $('img');
+  const btnAnalyze  = $('btnAnalyze');
+  const catsWrap    = $('cats');
+  const answerBox   = $('answer');
+  const answerTitle = $('answerTitle');
+  const btnReward   = $('btnReward');
+  const btnBack     = $('btnBack');
+  const btnRetry1   = $('btnRetry1');
+  const btnRetry2   = $('btnRetry2');
 
   function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+  function pad4(n){ return String(n).padStart(4,'0'); }
+
   function loadCredits(){
     const n = parseInt(localStorage.getItem(LS_KEY_CREDITS) || `${DEFAULT_CREDITS}`, 10);
     return clamp(Number.isFinite(n) ? n : DEFAULT_CREDITS, 0, MAX_CREDITS);
@@ -159,73 +168,200 @@
     return v;
   }
   function renderCredits(v = loadCredits()){
-    elCreditMeter.textContent = `(이용 가능 건수 : ${String(v).padStart(4,'0')}건)`;
+    const txt = `(이용 가능 건수 : ${pad4(v)}건)`;
+    elCreditMeter.textContent = txt;
+    elCreditMeter2.textContent = txt;
+    const blocked = v <= 0;
+    inputCamera.disabled = blocked;
+    inputFile.disabled   = blocked;
+    if (blocked) { img.classList.add('hidden'); btnAnalyze.classList.add('hidden'); }
   }
 
-  // 초기화 + reset 파라미터 지원
+  // reset 지원
   (function initCredits(){
-    const params = new URLSearchParams(location.search);
-    if (params.has('reset')) localStorage.removeItem(LS_KEY_CREDITS);
+    const p = new URLSearchParams(location.search);
+    if (p.has('reset')) localStorage.removeItem(LS_KEY_CREDITS);
     renderCredits();
   })();
 
-  // ===== UI 요소 =====
-  const $ = (id)=>document.getElementById(id);
-  const q = $('q');
-  const btnSearch = $('btnSearch');
-  const btnClear = $('btnClear');
-  const btnReward = $('btnReward');
-  const tags = $('quickTags');
+  // 파일 선택
+  async function onFilePicked(file){
+    if(!file) return;
+    if(loadCredits()<=0){ alert('잔여 건수가 없습니다. 광고 시청으로 충전해주세요.'); return; }
+    img.src = URL.createObjectURL(file);
+    img.classList.remove('hidden');
+    btnAnalyze.classList.remove('hidden');
+  }
+  inputCamera.addEventListener('change', ()=> onFilePicked(inputCamera.files?.[0]));
+  inputFile  .addEventListener('change', ()=> onFilePicked(inputFile.files?.[0]));
 
-  // 빠른 태그 클릭 → 입력창 채우고 바로 검색
-  tags.addEventListener('click', (e)=>{
-    const t = e.target.closest('.tag');
-    if(!t) return;
-    q.value = t.textContent.trim();
-    doSearch();
+  // Base64
+  const toBase64 = (file)=> new Promise((resolve)=>{
+    const r = new FileReader();
+    r.onload = ()=> resolve(r.result.split(',')[1]);
+    r.readAsDataURL(file);
   });
 
-  // 검색 버튼
-  btnSearch.addEventListener('click', doSearch);
-  q.addEventListener('keydown', (e)=>{ if(e.key==='Enter') doSearch(); });
-
-  function doSearch(){
-    const keyword = (q.value||'').trim();
-    if(!keyword){ alert('검색어를 입력하세요.'); q.focus(); return; }
-
-    let credits = loadCredits();
-    if(credits <= 0){ alert('잔여 건수가 없습니다. 광고 시청으로 충전해주세요.'); return; }
-
-    // 1건 차감
-    credits = saveCredits(credits - 1);
-
-    // 앱 우선 → 웹 폴백
-    const appUrl = makeAppUrl(keyword);
-    const webUrl = makeWebUrl(keyword);
-
-    // 앱 시도
-    location.href = appUrl;
-
-    // 400ms 후 웹 폴백 (앱이 열린 경우 보통 영향 없음)
-    setTimeout(()=> {
-      window.open(webUrl, '_blank', 'noopener,noreferrer');
-    }, 400);
+  // 쿠팡 링크
+  function coupangAppUrl(q){ return 'coupang://search?q=' + encodeURIComponent(q); }
+  function coupangWebUrl(q){
+    const base='https://www.coupang.com/np/search';
+    const params = new URLSearchParams({ q, channel:'user', lptag: PARTNER_ID, subId: SUB_ID });
+    return `${base}?${params.toString()}`;
   }
 
-  // 지우기
-  btnClear.addEventListener('click', ()=>{
-    q.value=''; q.focus();
+  // 검색 키워드 생성(요약 결과 → 키워드)
+  function buildSearchKeyword(product={}, fallbackTitle=''){
+    const parts = [];
+    if (product.brand) parts.push(product.brand);
+    if (product.model) parts.push(product.model);
+    if (product.name)  parts.push(product.name);
+    if (Array.isArray(product.attrs)) parts.push(...product.attrs.slice(0,3));
+    let q = parts.join(' ').replace(/\s+/g,' ').trim();
+    if (!q) q = (fallbackTitle||'').trim();
+    if (q.length > 80) q = q.slice(0,80);
+    return q;
+  }
+
+  // 쿠팡 버튼 부착
+  function attachCoupangButton(containerEl, keyword){
+    // 기존 버튼 중복 방지
+    const old = containerEl.querySelector('[data-coupang-btn]');
+    if (old) old.remove();
+
+    const wrap = document.createElement('div');
+    wrap.style.marginTop='10px';
+    const btn = document.createElement('button');
+    btn.setAttribute('data-coupang-btn','1');
+    btn.className = 'btn';
+    btn.textContent = '🛒 쿠팡에서 최저가 보기';
+    btn.addEventListener('click', ()=>{
+      if(!keyword){ alert('검색 키워드를 찾지 못했습니다.'); return; }
+      const appU = coupangAppUrl(keyword);
+      const webU = coupangWebUrl(keyword);
+      location.href = appU; // 앱 우선
+      setTimeout(()=> window.open(webU,'_blank','noopener,noreferrer'), 400); // 웹 폴백
+    });
+    wrap.appendChild(btn);
+    containerEl.appendChild(wrap);
+  }
+
+  // 분석 실행
+  btnAnalyze.addEventListener('click', async ()=>{
+    const file = inputCamera.files?.[0] || inputFile.files?.[0];
+    if(!file) return alert('이미지를 선택하세요.');
+    if(loadCredits()<=0){ alert('잔여 건수가 없습니다. 광고 시청으로 충전해주세요.'); return; }
+
+    btnAnalyze.textContent = '인식 중...';
+    btnAnalyze.disabled = true;
+
+    try{
+      // 1회 차감
+      saveCredits(loadCredits()-1);
+
+      let data;
+      if (USE_MOCK){
+        // 모의 응답: 바로 동작 확인용
+        await new Promise(r=>setTimeout(r, 500));
+        data = {
+          success:true,
+          payload:{
+            product:{ brand:'라코스테', model:'L1212', name:'폴로 티셔츠', attrs:['남성','반팔','화이트'] },
+            coreSummary:'- 브랜드: 라코스테\n- 모델: L1212\n- 유형: 폴로 티셔츠\n- 특이사항: 면 100%, 기본핏',
+            categories:[
+              { title:'🧾 핵심요약', summary:'- 주요 스펙: 면 100%, 기본핏, 반팔\n- 세탁: 저온/손세탁 권장\n- 가격 체크: 쿠팡 최저가 확인 권장' },
+              { title:'👕 소재/관리', summary:'- 소재: 면 100%\n- 세탁: 찬물/중성세제, 건조기 지양' }
+            ]
+          }
+        };
+      }else{
+        const base64 = await toBase64(file);
+        const r = await fetch(`${API_BASE}/api/summarize`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ imageBase64: base64, lang:'ko' })
+        });
+        data = await r.json();
+        if(!data.success && !r.ok) throw new Error(data.message || '요약 실패');
+      }
+
+      const payload = data.payload || { categories:[], coreSummary:'-' };
+      window.lastPayload = payload;
+
+      // 카테고리 표시
+      renderCategories(payload);
+      stepUpload.classList.add('hidden');
+      stepCats.classList.remove('hidden');
+      window.scrollTo({ top:0, behavior:'smooth' });
+
+    }catch(e){
+      alert(e.message || '오류가 발생했습니다.');
+    }finally{
+      btnAnalyze.textContent = '🔍 작은 글씨 요약';
+      btnAnalyze.disabled = false;
+    }
   });
 
-  // 보상형(시뮬) → 1회 충전
+  function toBullets(text=''){
+    const lines = (text||'').split('\n')
+      .map(s=>s.trim()).filter(Boolean)
+      .map(s=> s.startsWith('-')? s.slice(1).trim() : s);
+    if(!lines.length) return '<ul class="bul"><li>-</li></ul>';
+    return '<ul class="bul">' + lines.map(s=>`<li>${s}</li>`).join('') + '</ul>';
+  }
+
+  function renderCategories(payload){
+    catsWrap.innerHTML = '';
+    const list = payload.categories || [];
+    list.forEach((c)=>{
+      const b = document.createElement('button');
+      b.className = 'btn block';
+      b.textContent = c.title || '-';
+      b.addEventListener('click', ()=> showAnswer(c.title, toBullets(c.summary), payload));
+      catsWrap.appendChild(b);
+    });
+    // 핵심요약 버튼(항상 제공)
+    const coreBtn = document.createElement('button');
+    coreBtn.className = 'btn secondary block';
+    coreBtn.textContent = '🧾 핵심요약';
+    coreBtn.addEventListener('click', ()=> showAnswer('🧾 핵심요약', toBullets(payload.coreSummary || '-'), payload));
+    catsWrap.appendChild(coreBtn);
+  }
+
+  function showAnswer(title, html, payload){
+    answerTitle.textContent = title || '결과';
+    answerBox.innerHTML = html || '<ul class="bul"><li>-</li></ul>';
+
+    // 쿠팡 버튼 부착
+    const keyword = buildSearchKeyword(payload?.product || {}, title);
+    attachCoupangButton(answerBox, keyword);
+
+    stepCats.classList.add('hidden');
+    stepAnswer.classList.remove('hidden');
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }
+
+  function resetAll(){
+    inputCamera.value=''; inputFile.value='';
+    img.src=''; img.classList.add('hidden');
+    btnAnalyze.classList.add('hidden');
+    stepAnswer.classList.add('hidden');
+    stepCats.classList.add('hidden');
+    stepUpload.classList.remove('hidden');
+    renderCredits();
+  }
+  btnRetry1.addEventListener('click', resetAll);
+  btnRetry2.addEventListener('click', resetAll);
+  btnBack  .addEventListener('click', ()=>{
+    stepAnswer.classList.add('hidden');
+    stepCats.classList.remove('hidden');
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
+
+  // 리워드(시뮬): +1
   btnReward.addEventListener('click', ()=>{
-    // 실제 SDK 연동 시 광고 완료 콜백에서 saveCredits(loadCredits()+1) 호출
-    saveCredits(loadCredits() + 1);
+    saveCredits(loadCredits()+1);
     alert('광고 시청 완료! 1회 충전되었습니다.');
   });
-
-  // 배너/전면 광고 placeholder (필요시 SDK 연결)
-  (function initBanner(){ /* ... */ })();
 </script>
 </body>
 </html>
