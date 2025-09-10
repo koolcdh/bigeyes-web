@@ -1,4 +1,4 @@
-// api/summarize.js — v0.8 (i18n + domain detect + rebucket + core + repair + CONTRACT)
+// api/summarize.js — v1.0 (mini→4o 자동 재시도 + 도메인/리페어 로직 유지 + meta 반환)
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
@@ -10,13 +10,14 @@ export default async function handler(req, res) {
       return res.status(500).json({ success: false, message: 'Missing OPENAI_API_KEY' });
     }
 
-    const { imageBase64, lang = 'ko' } = req.body || {};
+    const { imageBase64, lang = 'ko', forceModel = '' } = req.body || {};
     if (!imageBase64) {
       return res.status(400).json({ success: false, message: 'imageBase64 is required' });
     }
 
     const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
+    // --------- i18n labels ---------
     const LABELS = {
       ko: {
         summary:'🧾 핵심요약', warnings:'⚠️ 주의', details:'🔎 세부정보',
@@ -46,7 +47,6 @@ export default async function handler(req, res) {
         coreLabel:'📝 Summary', fallback:'Brief summary',
         empty:'- Not enough readable text.\n- Try a closer/brighter photo.\n- Ensure focus, then retry.',
       },
-      // ja/zh 필요 시 확장
     };
 
     const DOMAINS = ['medicine','manual','receipt','food_label','product_page','contract','general'];
@@ -60,6 +60,7 @@ export default async function handler(req, res) {
       general:      ['summary','warnings','details'],
     };
 
+    // --------- utils ---------
     const L = (lg) => LABELS[lg] || LABELS.ko;
     const normalizeSummary = (lg, s='') => {
       const t = (s || '').trim();
@@ -99,6 +100,7 @@ export default async function handler(req, res) {
       return joinBullets(bullets.slice(0, want));
     };
 
+    // --------- prompts ---------
     const promptByLang = (lg='ko') => {
       const labels = L(lg);
       const titleMap = {
@@ -181,9 +183,10 @@ ${JSON.stringify(prevCategories, null, 2)}
 `;
     };
 
-    async function callOpenAIWithImage({ lg='ko', imageBase64, promptText }) {
+    // --------- OpenAI call ---------
+    async function callOpenAIWithImage({ model, lg='ko', imageBase64, promptText }) {
       const body = {
-        model: 'gpt-4o-mini',
+        model,
         temperature: 0,
         top_p: 0.2,
         max_completion_tokens: 900,
@@ -212,73 +215,134 @@ ${JSON.stringify(prevCategories, null, 2)}
       return parsed;
     }
 
-    // ---- 1) 1차 추출
-    let parsed = await callOpenAIWithImage({ lg: lang, imageBase64, promptText: promptByLang(lang) });
+    // --------- one-round inference pipeline ---------
+    async function runOnce(modelName) {
+      // 1) 1차 추출
+      let parsed = await callOpenAIWithImage({ model: modelName, lg: lang, imageBase64, promptText: promptByLang(lang) });
+      let domain = DOMAINS.includes(parsed?.domain) ? parsed.domain : 'general';
+      const templateKeys = DOMAIN_TEMPLATES[domain];
 
-    let domain = DOMAINS.includes(parsed?.domain) ? parsed.domain : 'general';
-    const templateKeys = DOMAIN_TEMPLATES[domain];
-
-    let categories = Array.isArray(parsed?.categories) ? parsed.categories : [];
-    categories = categories
-      .filter(c => templateKeys.includes(c.key))
-      .map(c => ({
-        key: c.key,
-        title: L(lang)[c.key] || c.title || c.key,
-        summary: sanitizeSummary(lang, normalizeSummary(lang, String(c.summary || '').trim()))
-      }));
-
-    // 템플릿 보장
-    if (!categories.length) {
-      categories = templateKeys.map(k => ({ key:k, title: L(lang)[k] || k, summary: L(lang).empty }));
-    }
-    const exist = new Set(categories.map(c=>c.key));
-    for (const k of templateKeys) {
-      if (!exist.has(k)) categories.push({ key:k, title:L(lang)[k]||k, summary:L(lang).empty });
-    }
-
-    // ---- 2) Re-bucket
-    const rebucket = await callOpenAIWithImage({
-      lg: lang, imageBase64, promptText: rebucketPrompt(lang, domain, templateKeys, categories)
-    });
-    if (Array.isArray(rebucket?.categories) && rebucket.categories.length) {
-      let fixed = rebucket.categories
+      let categories = Array.isArray(parsed?.categories) ? parsed.categories : [];
+      categories = categories
         .filter(c => templateKeys.includes(c.key))
         .map(c => ({
           key: c.key,
           title: L(lang)[c.key] || c.title || c.key,
-          summary: sanitizeSummary(lang, normalizeSummary(lang, String(c.summary||'').trim()))
+          summary: sanitizeSummary(lang, normalizeSummary(lang, String(c.summary || '').trim()))
         }));
-      const ex2 = new Set(fixed.map(c=>c.key));
-      for (const k of templateKeys) {
-        if (!ex2.has(k)) fixed.push({ key:k, title:L(lang)[k]||k, summary:L(lang).empty });
+
+      // 템플릿 보장
+      if (!categories.length) {
+        categories = templateKeys.map(k => ({ key:k, title: L(lang)[k] || k, summary: L(lang).empty }));
       }
-      categories = fixed;
+      const exist = new Set(categories.map(c=>c.key));
+      for (const k of templateKeys) {
+        if (!exist.has(k)) categories.push({ key:k, title:L(lang)[k]||k, summary:L(lang).empty });
+      }
+
+      // 2) Re-bucket
+      const rebucket = await callOpenAIWithImage({
+        model: modelName, lg: lang, imageBase64, promptText: rebucketPrompt(lang, domain, templateKeys, categories)
+      }).catch(() => null);
+      if (Array.isArray(rebucket?.categories) && rebucket.categories.length) {
+        let fixed = rebucket.categories
+          .filter(c => templateKeys.includes(c.key))
+          .map(c => ({
+            key: c.key,
+            title: L(lang)[c.key] || c.title || c.key,
+            summary: sanitizeSummary(lang, normalizeSummary(lang, String(c.summary||'').trim()))
+          }));
+        const ex2 = new Set(fixed.map(c=>c.key));
+        for (const k of templateKeys) {
+          if (!ex2.has(k)) fixed.push({ key:k, title:L(lang)[k]||k, summary:L(lang).empty });
+        }
+        categories = fixed;
+      }
+
+      // 3) 핵심요약
+      let core = String(parsed?.core_summary || '').trim();
+      if (!core) core = buildCoreFromCategories(lang, categories);
+      core = sanitizeSummary(lang, normalizeSummary(lang, core));
+
+      // 4) 마지막 보정
+      if (allEmptySummaries(lang, categories)) {
+        const repaired = await callOpenAIWithImage({
+          model: modelName, lg: lang, imageBase64, promptText: repairPrompt(lang, domain, templateKeys)
+        }).catch(() => null);
+        let repairedCats = Array.isArray(repaired?.categories) ? repaired.categories : [];
+        repairedCats = repairedCats
+          .filter(c => templateKeys.includes(c.key))
+          .map(c => ({
+            key: c.key,
+            title: L(lang)[c.key] || c.title || c.key,
+            summary: sanitizeSummary(lang, normalizeSummary(lang, c.summary))
+          }));
+        if (repairedCats.length) categories = repairedCats;
+        if (!core || core === L(lang).empty) core = buildCoreFromCategories(lang, categories);
+      }
+
+      return {
+        domain,
+        categories,
+        coreSummary: core
+      };
     }
 
-    // ---- 3) 핵심요약
-    let core = String(parsed?.core_summary || '').trim();
-    if (!core) core = buildCoreFromCategories(lang, categories);
-    core = sanitizeSummary(lang, normalizeSummary(lang, core));
+    // --------- model selection & fallback ---------
+    const MODEL_MINI = 'gpt-4o-mini';
+    const MODEL_FULL = 'gpt-4o';
+    const plan = (() => {
+      if (forceModel === '4o') return [MODEL_FULL];        // 강제 4o
+      if (forceModel === 'mini') return [MODEL_MINI, MODEL_FULL]; // mini 우선, 실패 시 4o
+      return [MODEL_MINI, MODEL_FULL]; // 기본
+    })();
 
-    // ---- 4) 마지막 보정
-    if (allEmptySummaries(lang, categories)) {
-      const repaired = await callOpenAIWithImage({
-        lg: lang, imageBase64, promptText: repairPrompt(lang, domain, templateKeys)
+    let usedModel = null;
+    let fellBack = false;
+    let lastResult = null;
+
+    for (let i=0; i<plan.length; i++){
+      usedModel = plan[i];
+      const result = await runOnce(usedModel).catch((e) => {
+        console.error('[openai-error]', usedModel, e?.message || e);
+        return null;
       });
-      let repairedCats = Array.isArray(repaired?.categories) ? repaired.categories : [];
-      repairedCats = repairedCats
-        .filter(c => templateKeys.includes(c.key))
-        .map(c => ({
-          key: c.key,
-          title: L(lang)[c.key] || c.title || c.key,
-          summary: sanitizeSummary(lang, normalizeSummary(lang, c.summary))
-        }));
-      if (repairedCats.length) categories = repairedCats;
-      if (!core || core === L(lang).empty) core = buildCoreFromCategories(lang, categories);
+
+      if (!result) {
+        // 모델 호출 자체가 실패 → 다음 모델 시도
+        if (i < plan.length - 1) fellBack = true;
+        continue;
+      }
+
+      lastResult = result;
+
+      // 성공 판단: 핵심/카테고리 모두 empty 면 실패로 간주 → 다음 모델 시도
+      const categoriesEmpty = allEmptySummaries(lang, result.categories);
+      const coreEmpty = !result.coreSummary || result.coreSummary === L(lang).empty;
+      if (categoriesEmpty && coreEmpty) {
+        if (i < plan.length - 1) {
+          fellBack = true;
+          continue; // 다음 모델로 재시도
+        }
+      }
+
+      // 어느 정도라도 정보가 있으면 채택
+      break;
     }
 
-    const payload = { domain, categories, coreSummary: core };
-    return res.json({ success: true, payload });
+    if (!lastResult) {
+      return res.status(500).json({ success:false, message:'OCR/요약에 실패했습니다.' });
+    }
+
+    // 최종 응답
+    return res.json({
+      success: true,
+      payload: lastResult,
+      meta: {
+        model_used: usedModel,
+        fallback_used: fellBack
+      }
+    });
 
   } catch (e) {
     console.error(e);
