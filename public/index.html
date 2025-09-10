@@ -101,11 +101,10 @@ textarea.summary-box{
     <p class="small">※ 같은 사진에 대해 OCR은 한 번만 차감됩니다.</p>
   </section>
 
-  <!-- STEP 2-A: 보고서 형태 요약(읽기 전용) -->
+  <!-- STEP 2-A: 보고서(읽기 전용) -->
   <section id="stepSummary" class="card hidden">
     <h2 class="section-title">2) 요약 결과(보고서)</h2>
     <textarea id="sumReadOnly" class="summary-box" readonly></textarea>
-    <!-- ✅ 요약 화면에서도 ‘쿠팡 검색 전 확인’ 화면으로 이동 -->
     <div class="row" style="grid-template-columns:1fr auto;align-items:center">
       <button id="btnBackSum" class="btn secondary">⬅ 이전 화면으로</button>
       <button id="btnGoCoupangDirect" class="btn">🛒 쿠팡최저가 가기</button>
@@ -195,16 +194,41 @@ async function toBase64(file, maxSide=1600, quality=0.8){
 function coupangAppUrl(q){return 'coupang://search?q='+encodeURIComponent(q)}
 function coupangWebUrl(q){const base='https://www.coupang.com/np/search';const params=new URLSearchParams({q,channel:'user',lptag:PARTNER_ID,subId:SUB_ID});return `${base}?${params.toString()}`}
 
-/* ===== 요약→검색어(요약 기반) ===== */
-function keywordFromSummary(core=''){
-  const lines=(core||'').split('\n').map(s=>s.replace(/^\s*-\s*/,'').trim()).filter(Boolean).slice(0,3);
-  const first = (lines[0]||'').slice(0,80);
-  if(first.length>=4) return first;
-  const cleaned = lines.join(' ').replace(/[()［\]【】{}<>:;'"“”‘’]/g,' ');
-  const words = cleaned.split(/\s+/).map(t=>t.replace(/[^0-9A-Za-z가-힣\-]/g,'')).filter(Boolean);
-  const stop = new Set(['주의','경고','사용법','상세','참조','제품','상품','모델','코드']);
-  const picked = words.filter(w=>w.length>=2 && !stop.has(w)).slice(0,6).join(' ');
-  return (picked||first).slice(0,80);
+/* ===== 요약→검색어 (제목 제외, 불릿 우선) ===== */
+function keywordFromSummary(text=''){
+  const lines = String(text||'')
+    .split('\n')
+    .map(s => s.trim())
+    .filter(s => s && !/^■/.test(s)); // 섹션 제목 제거
+
+  // 1순위: 첫 번째 불릿의 내용
+  let firstBullet = lines.find(s => /^[-•]/.test(s)) || '';
+  firstBullet = firstBullet.replace(/^[-•]\s*/, '').trim();
+
+  // 2순위: 불릿이 없으면 첫 의미 문장
+  let candidate = firstBullet || (lines[0] || '');
+
+  // 노이즈 제거 + 길이 제한
+  candidate = candidate
+    .replace(/[()［\]【】{}<>:;'"“”‘’]/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .slice(0, 80)
+    .trim();
+
+  // 3순위(보강): 너무 짧으면 단어 추출
+  if (candidate.length < 4) {
+    const stop = new Set(['주의','경고','사용법','상세','참조','제품','상품','모델','코드','핵심','요약','특징']);
+    const picked = lines
+      .join(' ')
+      .replace(/[()［\]【】{}<>:;'"“”‘’]/g,' ')
+      .split(/\s+/)
+      .map(t => t.replace(/[^0-9A-Za-z가-힣\-]/g,''))
+      .filter(w => w.length >= 2 && !stop.has(w))
+      .slice(0, 6)
+      .join(' ');
+    candidate = (picked || candidate).slice(0, 80);
+  }
+  return candidate;
 }
 
 /* ===== 보고서(제품 식별 제거 버전) ===== */
