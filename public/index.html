@@ -30,7 +30,7 @@ textarea.summary-box{
 }
 .preview{width:100%;max-height:380px;object-fit:contain;border-radius:12px;border:1px solid var(--line)}
 .hidden{display:none}
-.small{font-size:13px;color:var(--muted)}
+.small{font-size:13px;color:#9aa5d1}
 .section-title{margin:0 0 6px}
 
 /* 로딩 오버레이 */
@@ -105,11 +105,12 @@ textarea.summary-box{
   <section id="stepSummary" class="card hidden">
     <h2 class="section-title">2) 요약 결과(보고서)</h2>
     <textarea id="sumReadOnly" class="summary-box" readonly></textarea>
-    <div class="row" style="grid-template-columns:1fr;align-items:center">
-      <!-- 이 화면에서는 최저가 버튼 숨김 -->
+    <!-- ✅ 버튼 추가: 요약 화면에서도 바로 쿠팡 이동 -->
+    <div class="row" style="grid-template-columns:1fr auto;align-items:center">
       <button id="btnBackSum" class="btn secondary">⬅ 이전 화면으로</button>
+      <button id="btnGoCoupangDirect" class="btn">🛒 쿠팡최저가 가기</button>
     </div>
-    <p class="small">※ 최저가 이동은 다음 화면(검색어 확인 단계)에서 진행할 수 있어요.</p>
+    <p class="small">※ 바로 이동 시, 아래 화면에서 검색어를 수정하지 않고 진행합니다.</p>
   </section>
 
   <!-- STEP 2-B: 쿠팡 키워드 확인/수정 -->
@@ -167,11 +168,11 @@ const btnBack2=$('btnBack2'), btnGoCoupang=$('btnGoCoupang');
 const btnReward=$('btnReward');
 const loadingOverlay=$('loadingOverlay');
 
-/* ===== 로딩 토글(모바일에서도 확실히 보이게) ===== */
+/* ===== 로딩 토글 ===== */
 async function showLoading(on=true){
   if(on){
     loadingOverlay.classList.add('show');
-    await new Promise(requestAnimationFrame); // 페인트 1프레임 양보
+    await new Promise(requestAnimationFrame);
   }else{
     loadingOverlay.classList.remove('show');
   }
@@ -185,9 +186,6 @@ function saveCredits(n){const v=clamp(n,0,MAX_CREDITS);localStorage.setItem(LS_K
 function renderCredits(v=loadCredits()){
   const txt=`(이용 가능 건수 : ${pad4(v)}건)`;
   creditTop.textContent=txt; creditTop2.textContent=txt;
-
-  // ⚠ 파일 입력 비활성화는 UX 문제를 유발하므로 해제
-  // const blocked=v<=0; fileCam.disabled=blocked; filePick.disabled=blocked;
 }
 (function initCredits(){const p=new URLSearchParams(location.search); if(p.has('reset')) localStorage.removeItem(LS_KEY); renderCredits();})();
 
@@ -212,13 +210,33 @@ async function toBase64(file, maxSide=1600, quality=0.8){
 
 function coupangAppUrl(q){return 'coupang://search?q='+encodeURIComponent(q)}
 function coupangWebUrl(q){const base='https://www.coupang.com/np/search';const params=new URLSearchParams({q,channel:'user',lptag:PARTNER_ID,subId:SUB_ID});return `${base}?${params.toString()}`}
-function buildSearchKeyword(product={}, fallback=''){
-  const parts=[]; if(product.brand)parts.push(product.brand); if(product.model)parts.push(product.model); if(product.name)parts.push(product.name);
-  if(Array.isArray(product.attrs)) parts.push(...product.attrs.slice(0,3));
-  let q=parts.join(' ').replace(/\s+/g,' ').trim(); if(!q) q=(fallback||'').trim(); if(q.length>80) q=q.slice(0,80); return q;
+
+/* ✅ 요약에서만 검색어 생성 */
+function keywordFromSummary(core=''){
+  const lines=(core||'').split('\n').map(s=>s.replace(/^\-\s*/,'').trim()).filter(Boolean).slice(0,3);
+  const cleaned=lines.map(l=>l.replace(/[()［\]【】{}<>:;'"“”‘’]/g,' ').replace(/\s{2,}/g,' ').trim()).join(' ');
+  let tokens=cleaned.split(/\s+/).map(t=>t.replace(/[^0-9A-Za-z가-힣\-]/g,'')).filter(Boolean);
+
+  // 가벼운 필터: 너무 짧은 단어/노이즈 제거
+  const STOP=['주의','경고','사용법','참조','자세히','상세','해당','제품','상품','기본','특징','옵션','선택','권장','주의사항','보관','이상','이하'];
+  tokens=tokens.filter(t=>t.length>=2 && !STOP.includes(t));
+
+  // 우선순위: 의미 단어 6 +(모델/치수/색상/유형) 4
+  const MODEL=/^[A-Z0-9][A-Z0-9\-]{2,}$/;
+  const SIZE=/^(\d{2,4}[cmCM]|[SMLXL]{1,3}|[2-9]XL)$/;
+  const COLOR=/^(블랙|화이트|아이보리|그레이|네이비|카키|베이지|브라운|레드|블루|그린)$/;
+  const TYPE=/^(반팔|긴팔|폴로|셔츠|바지|점퍼|스니커즈|후드|자켓|원피스|가디건)$/;
+
+  const pri=[], sec=[];
+  for(const t of tokens){ (MODEL.test(t)||SIZE.test(t)||COLOR.test(t)||TYPE.test(t) ? pri : sec).push(t); }
+  let q=[...sec.slice(0,6), ...pri.slice(0,4)].join(' ').trim();
+
+  if(q.length<6 && lines.length) q=lines[0].slice(0,80);
+  if(q.length>80) q=q.slice(0,80);
+  return q;
 }
 
-/* ===== 보고서용 텍스트 합치기/추출 ===== */
+/* ===== 보고서용 텍스트 합치기/추출 (기존 유지) ===== */
 function gatherAllText(payload){
   const parts = [];
   if (payload.coreSummary) parts.push(payload.coreSummary);
@@ -260,7 +278,7 @@ function extractGenericKeywords(textRaw='', max=4){
   return [...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,max).map(([w])=>w).join(' ');
 }
 
-/* ===== 보고서 렌더러 ===== */
+/* ===== 보고서 렌더러 (기존 유지) ===== */
 function buildReport(payload){
   const lines=[];
   const domain = payload.domain ? `(${payload.domain})` : '';
@@ -298,7 +316,7 @@ function buildReport(payload){
   return lines.join('\n');
 }
 
-/* ===== 파일 선택 처리(onPick) + 이중 트리거 가드 ===== */
+/* ===== 파일 선택 처리(onPick) ===== */
 let _pickBusy=false, _lastPickKey='';
 async function onPick(file, from){
   try{
@@ -309,7 +327,7 @@ async function onPick(file, from){
 
     lastImageBlob = file;
 
-    // FileReader로 미리보기 (모바일 호환성↑)
+    // FileReader로 미리보기
     const dataUrl = await new Promise((resolve, reject)=>{
       const fr = new FileReader();
       fr.onload = ()=>resolve(fr.result);
@@ -368,12 +386,28 @@ async function ensureOCR(){
   return _ocrPromise;
 }
 
-/* ===== ① 작은 글씨 요약 → 보고서 ===== */
+/* ===== ① 작은 글씨 요약 → 보고서 + 요약기반 직행 ===== */
 btnAnalyze.addEventListener('click', async ()=>{
   await showLoading(true);
   try{
     const payload=await ensureOCR();
     sumReadOnly.value=buildReport(payload);
+
+    // ✅ 요약만으로 키워드 생성 (제품식별 무시)
+    const core=(payload.coreSummary||'').trim();
+    let kw=keywordFromSummary(core);
+    if(!kw && core) kw = extractGenericKeywords(core,4) || core.slice(0,80);
+
+    // 🛒 요약 화면 우측 버튼: 바로 쿠팡 이동
+    const btnGoCoupangDirect=document.getElementById('btnGoCoupangDirect');
+    if(btnGoCoupangDirect){
+      btnGoCoupangDirect.onclick=()=>{
+        if(!kw) return alert('검색어가 없습니다.');
+        const app=coupangAppUrl(kw), web=coupangWebUrl(kw);
+        location.href=app; setTimeout(()=>window.open(web,'_blank','noopener,noreferrer'),400);
+      };
+    }
+
     stepUpload.classList.add('hidden');
     stepSummary.classList.remove('hidden');
     window.scrollTo({top:0,behavior:'smooth'});
@@ -388,27 +422,20 @@ btnBackSum.addEventListener('click', ()=>{
   stepUpload.classList.remove('hidden');
 });
 
-/* ===== ② 쿠팡 플로우 ===== */
+/* ===== ② 쿠팡 플로우 (요약만 표시/사용) ===== */
 btnCoupangFlow.addEventListener('click', async ()=>{
   await showLoading(true);
   try{
     const payload=await ensureOCR();
 
     const baseSummary=(payload.coreSummary||'').trim();
-    const p=payload.product||{};
-    const infoLine=[p.brand,p.model,p.name,Array.isArray(p.attrs)?p.attrs.slice(0,3).join(', '):''].filter(Boolean).join(' · ');
-    sumBox.value=[baseSummary, infoLine?`\n\n[제품] ${infoLine}`:''].join('');
+    // ✅ 제품 줄 제거: 자유 요약만 노출
+    sumBox.value=baseSummary;
     sumBox.readOnly=true; btnEditSum.textContent='✏️ 수정';
 
-    // 검색어: (브랜드?) + 코드 + 색상 → 없으면 일반 키워드 추출 (사이즈 제외)
-    let kw = buildSearchKeyword({ brand:p.brand, model:p.model, name:p.name, attrs:[] }, '').trim();
-    if(!kw){
-      const allText=gatherAllText(payload);
-      const info=extractInfo(allText);
-      const parts=[]; if(info.brand) parts.push(info.brand); if(info.code) parts.push(info.code); if(info.color) parts.push(info.color);
-      kw = parts.join(' ').replace(/\s+/g,' ').trim();
-      if(!kw) kw = extractGenericKeywords(allText,4);
-    }
+    // ✅ 검색어: 요약에서만 생성
+    let kw=keywordFromSummary(baseSummary);
+    if(!kw && baseSummary) kw = extractGenericKeywords(baseSummary,4) || baseSummary.slice(0,80);
     kwFinal.value=kw;
 
     stepUpload.classList.add('hidden');
