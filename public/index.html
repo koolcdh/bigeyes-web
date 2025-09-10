@@ -143,7 +143,7 @@ textarea.summary-box{
 
 <script>
 /* ===== 설정 ===== */
-const API_BASE = ""; // 같은 도메인/경로에서 /api/summarize 상대호출
+const API_BASE = ""; // 같은 도메인 상대호출 (/api/summarize)
 const PARTNER_ID = 'AF2974050';
 const SUB_ID     = 'bigeyes';
 const LS_KEY = 'be_credits_v08';
@@ -152,7 +152,7 @@ const MAX_CREDITS = 9999;
 
 /* ===== 상태/요소 ===== */
 let lastImageBlob = null;
-let lastOCR = null;
+let lastOCR = null;           // 서버에서 받은 payload(=요약 + 추천검색어)
 let ocrDoneForThisImage = false;
 
 const $ = id => document.getElementById(id);
@@ -194,38 +194,20 @@ async function toBase64(file, maxSide=1600, quality=0.8){
 function coupangAppUrl(q){return 'coupang://search?q='+encodeURIComponent(q)}
 function coupangWebUrl(q){const base='https://www.coupang.com/np/search';const params=new URLSearchParams({q,channel:'user',lptag:PARTNER_ID,subId:SUB_ID});return `${base}?${params.toString()}`}
 
-/* ===== 요약→검색어 (제목 제외, 불릿 우선) ===== */
+/* ===== 로컬 폴백: 요약→검색어 ===== */
 function keywordFromSummary(text=''){
-   const raw = String(text||'')
-     .split('\n')
-     .map(s => s.trim())
-     .filter(Boolean);
-   // 섹션제목/가격/행사/주의성 문장 제외
-   const skip = /(■|가격|원|할인|행사|쿠폰|기간|주의|경고|보관|사용법|참조)/;
-   const lines = raw
-     .filter(s => !/^■/.test(s))
-     .filter(s => !skip.test(s));
+  const raw = String(text||'').split('\n').map(s => s.trim()).filter(Boolean);
+  const skip = /(■|가격|원|할인|행사|쿠폰|기간|주의|경고|보관|사용법|참조)/;
+  const lines = raw.filter(s => !/^■/.test(s)).filter(s => !skip.test(s));
+  const bullets = lines.filter(s => /^[-•]/.test(s)).map(s => s.replace(/^[-•]\s*/, '').trim());
+  const tokenLike = /([A-Z]{2,}\d{1,}|\d{3,}[A-Z]{1,}|[A-Za-z]{3,}\d{1,}|\b[가-힣A-Za-z]{2,}\b)/g;
+  const candidates = (bullets.length? bullets : lines).map(s => (s.match(tokenLike)||[]).join(' ').trim()).filter(s => s && s.length >= 2);
+  let out = (candidates[0] || (bullets[0] || lines[0] || '')).replace(/[()［\]【】{}<>:;'"“”‘’]/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  if (out.length > 80) out = out.slice(0, 80);
+  return out;
+}
 
-   // 불릿 제거
-   const bullets = lines
-     .filter(s => /^[-•]/.test(s))
-     .map(s => s.replace(/^[-•]\s*/, '').trim());
-
-   // 브랜드/모델/제품명 힌트 토큰 우선 매칭
-   const tokenLike = /([A-Z]{2,}\d{1,}|\d{3,}[A-Z]{1,}|[A-Za-z]{3,}\d{1,}|\b[가-힣A-Za-z]{2,}\b)/g;
-   const candidates = (bullets.length? bullets : lines)
-     .map(s => (s.match(tokenLike)||[]).join(' ').trim())
-     .filter(s => s && s.length >= 2);
-
-   let out = (candidates[0] || (bullets[0] || lines[0] || ''))
-     .replace(/[()［\]【】{}<>:;'"“”‘’]/g, ' ')
-     .replace(/\s{2,}/g, ' ')
-     .trim();
-   if (out.length > 80) out = out.slice(0, 80);
-   return out;
- }
-
-/* ===== 보고서(제품 식별 제거 버전) ===== */
+/* ===== 보고서 빌드(맨 아래 ‘쿠팡 추천 검색어’ 노출) ===== */
 function buildReport(payload){
   const lines=[];
   const core = String(payload.coreSummary||'').trim();
@@ -246,6 +228,11 @@ function buildReport(payload){
       lines.push(' - ' + l.replace(/^\s*-\s*/,'').trim());
     }
     lines.push('');
+  }
+  const rq = String(payload.coupangQuery||'').trim();
+  if (rq){
+    lines.push('■ 쿠팡 추천 검색어');
+    lines.push(' - ' + rq, '');
   }
   return lines.join('\n');
 }
@@ -312,13 +299,12 @@ btnAnalyze.addEventListener('click', async ()=>{
     const report=buildReport(payload);
     sumReadOnly.value=report;
 
-    // 요약 화면의 [쿠팡최저가 가기] → ‘쿠팡 검색 전 확인’ 화면으로
     const btnGoCoupangDirect=document.getElementById('btnGoCoupangDirect');
     if(btnGoCoupangDirect){
       btnGoCoupangDirect.onclick=()=>{
-        sumBox.value=report;              // 보고서 그대로
+        sumBox.value=report;
         sumBox.readOnly=true; btnEditSum.textContent='✏️ 수정';
-        kwFinal.value=keywordFromSummary(report); // 보고서 기반 검색어
+        kwFinal.value=(payload.coupangQuery && payload.coupangQuery.trim()) || keywordFromSummary(report);
         stepSummary.classList.add('hidden');
         stepCoupang.classList.remove('hidden');
         window.scrollTo({top:0,behavior:'smooth'});
@@ -338,10 +324,10 @@ btnCoupangFlow.addEventListener('click', async ()=>{
   await showLoading(true);
   try{
     const payload=await ensureOCR();
-    const report=buildReport(payload);        // 작은 글씨 요약과 동일
-    sumBox.value=report;                      // 그대로 표시
+    const report=buildReport(payload);
+    sumBox.value=report;
     sumBox.readOnly=true; btnEditSum.textContent='✏️ 수정';
-    kwFinal.value=keywordFromSummary(report); // 요약에서만 검색어 생성
+    kwFinal.value=(payload.coupangQuery && payload.coupangQuery.trim()) || keywordFromSummary(report);
     stepUpload.classList.add('hidden');
     stepCoupang.classList.remove('hidden');
     window.scrollTo({top:0,behavior:'smooth'});

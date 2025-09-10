@@ -1,4 +1,4 @@
-// api/summarize.js — v1.0 (mini→4o 자동 재시도 + 도메인/리페어 로직 유지 + meta 반환)
+// api/summarize.js — final (+coupang_query)
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
@@ -130,6 +130,7 @@ GENERAL RULES:
 - Keep a factual, "reporting to user" tone: short bullet points.
 - If info is scarce, keep it minimal; do NOT fabricate.
 - Add "core_summary": 2–4 bullets TL;DR with brief GPT advice. Write in ${lg}.
+- Add "coupang_query": one search keyword line (<=80 chars, in ${lg}). Compose from brand/product/model/size; EXCLUDE price/discount words; avoid punctuation noise.
 - Output JSON only.`;
 
       const titles = Object.entries(titleMap)
@@ -146,7 +147,8 @@ OUTPUT JSON SHAPE:
   "categories": [
     { "key": "<category key>", "title": "<localized title>", "summary": "<bulleted text in ${lg}>" }
   ],
-  "core_summary": "<2-4 bullets TL;DR with brief GPT advice in ${lg}>"
+  "core_summary": "<2-4 bullets TL;DR with brief GPT advice in ${lg}>",
+  "coupang_query": "<string>"
 }
 
 Localized titles per domain:
@@ -164,20 +166,22 @@ Return JSON ONLY:
   "categories": [
     ${titles.map(t => `{ "key": "${t.key}", "title": "${t.title}", "summary": "" }`).join(',')}
   ],
-  "core_summary": ""
+  "core_summary": "",
+  "coupang_query": ""
 }
 
 Rules:
 - Keep EXACTLY these category keys, in this order.
 - Put ONLY relevant info into each category; 3–6 '-' bullets in ${lg}; no duplication.
-- "core_summary": 2–4 bullets TL;DR with brief GPT advice in ${lg}.`;
+- "core_summary": 2–4 bullets TL;DR in ${lg}.
+- "coupang_query": one line keyword as defined.`;
     };
 
     const rebucketPrompt = (lg='ko', domain='general', templateKeys=[], prevCategories=[]) => {
       return `Re-bucket the bullets strictly by definitions for domain "${domain}".
 Keep EXACT category keys in this order: ${templateKeys.join(', ')}.
 Move misplaced bullets to the correct category; remove generic filler. No duplication.
-Output the same JSON shape (domain, categories[], core_summary).
+Output the same JSON shape (domain, categories[], core_summary, coupang_query).
 Previous categories:
 ${JSON.stringify(prevCategories, null, 2)}
 `;
@@ -259,10 +263,11 @@ ${JSON.stringify(prevCategories, null, 2)}
         categories = fixed;
       }
 
-      // 3) 핵심요약
+      // 3) 핵심요약 + 추천검색어
       let core = String(parsed?.core_summary || '').trim();
       if (!core) core = buildCoreFromCategories(lang, categories);
       core = sanitizeSummary(lang, normalizeSummary(lang, core));
+      const coupangQuery = String(parsed?.coupang_query || '').trim();
 
       // 4) 마지막 보정
       if (allEmptySummaries(lang, categories)) {
@@ -284,7 +289,8 @@ ${JSON.stringify(prevCategories, null, 2)}
       return {
         domain,
         categories,
-        coreSummary: core
+        coreSummary: core,
+        coupangQuery
       };
     }
 
@@ -292,9 +298,9 @@ ${JSON.stringify(prevCategories, null, 2)}
     const MODEL_MINI = 'gpt-4o-mini';
     const MODEL_FULL = 'gpt-4o';
     const plan = (() => {
-      if (forceModel === '4o') return [MODEL_FULL];        // 강제 4o
-      if (forceModel === 'mini') return [MODEL_MINI, MODEL_FULL]; // mini 우선, 실패 시 4o
-      return [MODEL_MINI, MODEL_FULL]; // 기본
+      if (forceModel === '4o') return [MODEL_FULL];
+      if (forceModel === 'mini') return [MODEL_MINI, MODEL_FULL];
+      return [MODEL_MINI, MODEL_FULL];
     })();
 
     let usedModel = null;
@@ -309,24 +315,17 @@ ${JSON.stringify(prevCategories, null, 2)}
       });
 
       if (!result) {
-        // 모델 호출 자체가 실패 → 다음 모델 시도
         if (i < plan.length - 1) fellBack = true;
         continue;
       }
 
       lastResult = result;
 
-      // 성공 판단: 핵심/카테고리 모두 empty 면 실패로 간주 → 다음 모델 시도
       const categoriesEmpty = allEmptySummaries(lang, result.categories);
       const coreEmpty = !result.coreSummary || result.coreSummary === L(lang).empty;
       if (categoriesEmpty && coreEmpty) {
-        if (i < plan.length - 1) {
-          fellBack = true;
-          continue; // 다음 모델로 재시도
-        }
+        if (i < plan.length - 1) { fellBack = true; continue; }
       }
-
-      // 어느 정도라도 정보가 있으면 채택
       break;
     }
 
@@ -334,14 +333,10 @@ ${JSON.stringify(prevCategories, null, 2)}
       return res.status(500).json({ success:false, message:'OCR/요약에 실패했습니다.' });
     }
 
-    // 최종 응답
     return res.json({
       success: true,
       payload: lastResult,
-      meta: {
-        model_used: usedModel,
-        fallback_used: fellBack
-      }
+      meta: { model_used: usedModel, fallback_used: fellBack }
     });
 
   } catch (e) {

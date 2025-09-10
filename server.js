@@ -1,4 +1,4 @@
-// server.js — TinyText (i18n + auto domain + rebucket + core summary + repair)
+// server.js — TinyText (final: +coupang_query)
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
@@ -33,8 +33,6 @@ const LABELS = {
     coreLabel:'📝 Summary', fallback:'Brief summary',
     empty:'- Not enough readable text.\n- Try a closer/brighter photo.\n- Ensure focus, then retry.',
   },
-  ja: { /* 필요하면 추가 확장 */ },
-  zh: { /* 필요하면 추가 확장 */ },
 };
 
 const DOMAINS = ['medicine','manual','receipt','food_label','product_page','general'];
@@ -49,7 +47,6 @@ const DOMAIN_TEMPLATES = {
 
 /* ---------------- utils ---------------- */
 function L(lang){ return LABELS[lang] || LABELS.ko; }
-
 function normalizeSummary(lang, s) {
   const t = (s || '').trim();
   if (!t) return L(lang).empty;
@@ -68,7 +65,6 @@ function sanitizeSummary(lang, text){
   const kept = splitBullets(text).filter(b => b.length>1 && !isGenericKo(b));
   return kept.length ? joinBullets(kept) : L(lang).empty;
 }
-
 function allEmptySummaries(lang, categories=[]){
   if (!categories.length) return true;
   return categories.every(c => {
@@ -76,8 +72,6 @@ function allEmptySummaries(lang, categories=[]){
     return !t || t === '-' || t === L(lang).empty || t.length < 3;
   });
 }
-
-// TL;DR(핵심요약) 자동 생성: 카테고리 불릿을 3~5줄로 압축
 function buildCoreFromCategories(lang, categories=[]){
   const bullets=[];
   for(const c of categories){
@@ -105,7 +99,6 @@ function promptByLang(lang='ko') {
   };
 
   const head = 'You read tiny printed labels and summarize them concisely.';
-
   const role = `
 CATEGORY DEFINITIONS (medicine):
 - dose: when/how much/how often/time/age/with food etc.
@@ -117,8 +110,9 @@ GENERAL RULES:
 - Return ALL categories for the chosen domain (no extra/missing, keep order).
 - Each category must contain ONLY relevant info; 3–6 bullets, '-' marker, no duplication.
 - If info is scarce, keep it minimal; do NOT fabricate.
-- Add an additional field "core_summary": a 2–4 bullet TL;DR including brief GPT advice or note for the user.
-- All JSON values (categories[].summary, core_summary) MUST be written in the selected language (${lang}).
+- Add an additional field "core_summary": 2–4 bullet TL;DR including brief GPT advice or note for the user.
+- Add an additional field "coupang_query": one search keyword line (<=80 chars, in ${lang}). Compose from brand/product/model/size; EXCLUDE price/discount words; avoid punctuation noise.
+- All JSON values must be written in ${lang}.
 - Output JSON only.
 `;
 
@@ -136,7 +130,8 @@ OUTPUT JSON SHAPE:
   "categories": [
     { "key": "<category key>", "title": "<localized title>", "summary": "<bulleted text in ${lang}>" }
   ],
-  "core_summary": "<2-4 bullets TL;DR with brief GPT advice in ${lang}>"
+  "core_summary": "<2-4 bullets TL;DR in ${lang}>",
+  "coupang_query": "<string>"
 }
 
 Localized titles per domain:
@@ -155,21 +150,22 @@ Return JSON ONLY:
   "categories": [
     ${titles.map(t => `{ "key": "${t.key}", "title": "${t.title}", "summary": "" }`).join(',')}
   ],
-  "core_summary": ""
+  "core_summary": "",
+  "coupang_query": ""
 }
 
 Rules:
 - Keep EXACTLY these category keys, in this order.
 - Put ONLY relevant info into each category; 3–6 '-' bullets in ${lang}; no duplication.
-- "core_summary": 2–4 bullets TL;DR with brief GPT advice in ${lang}.`;
+- "core_summary": 2–4 bullets TL;DR in ${lang}.
+- "coupang_query": one line keyword as defined.`;
 }
 
-// Re-bucket prompt: 잘못 들어간 불릿 재분류
 function rebucketPrompt(lang='ko', domain='medicine', templateKeys=[], prevCategories=[]) {
   return `Re-bucket the bullets strictly by definitions for domain "${domain}".
 Keep EXACT category keys in this order: ${templateKeys.join(', ')}.
 Move misplaced bullets to the correct category; remove generic filler. No duplication.
-Output the same JSON shape (domain, categories[], core_summary).
+Output the same JSON shape (domain, categories[], core_summary, coupang_query).
 Previous categories:
 ${JSON.stringify(prevCategories, null, 2)}
 `;
@@ -204,7 +200,6 @@ async function callOpenAIWithImage({ lang='ko', imageBase64, promptText }) {
   }
   const data = await r.json();
   const raw = data?.choices?.[0]?.message?.content;
-  console.log('[openai raw head]', (raw || '').slice(0, 220));
   let parsed = null; try { parsed = JSON.parse(raw); } catch {}
   return parsed;
 }
@@ -258,12 +253,13 @@ app.post('/api/summarize', async (req, res) => {
       categories = fixed;
     }
 
-    // 3) 핵심요약(core_summary)
+    // 3) 핵심요약 + 추천검색어
     let core = String(parsed?.core_summary || '').trim();
     if (!core) core = buildCoreFromCategories(lang, categories);
     core = sanitizeSummary(lang, normalizeSummary(lang, core));
+    const coupangQuery = String(parsed?.coupang_query || '').trim();
 
-    // 4) 전부 비었으면 마지막 보정
+    // 4) 전부 비었으면 보정
     if (allEmptySummaries(lang, categories)) {
       const repaired = await callOpenAIWithImage({
         lang, imageBase64, promptText: repairPrompt(lang, domain, templateKeys)
@@ -277,12 +273,11 @@ app.post('/api/summarize', async (req, res) => {
           summary: sanitizeSummary(lang, normalizeSummary(lang, c.summary))
         }));
       if (repairedCats.length) categories = repairedCats;
-      // core 보강
       if (!core || core === L(lang).empty) core = buildCoreFromCategories(lang, categories);
     }
 
-    const payload = { domain, categories, coreSummary: core };
-    console.log('[result]', { domain: payload.domain, keys: payload.categories.map(c=>c.key) });
+    const payload = { domain, categories, coreSummary: core, coupangQuery };
+    console.log('[result]', { domain: payload.domain, keys: payload.categories.map(c=>c.key), cq: payload.coupangQuery?.slice(0,60) });
     return res.json({ success:true, payload });
   } catch (e) {
     console.error(e);
@@ -290,7 +285,6 @@ app.post('/api/summarize', async (req, res) => {
   }
 });
 
-// 종료 로그
 process.on('SIGINT', () => {
   console.log('👋 TinyText 서버가 정상 종료되었습니다.');
   process.exit();
@@ -298,4 +292,5 @@ process.on('SIGINT', () => {
 
 app.listen(3000, () => console.log('TinyText server (final) http://localhost:3000'));
 
-app.use(express.static('public'));  // 현재 프로젝트 루트의 index.html 서빙
+// 정적 서빙(필요 시)
+app.use(express.static('public'));
