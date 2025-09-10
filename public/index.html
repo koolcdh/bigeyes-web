@@ -143,7 +143,7 @@ textarea.summary-box{
 
 <script>
 /* ===== 설정 ===== */
-const API_BASE = window.location.origin;
+const API_BASE = ""; // 같은 도메인/경로에서 /api/summarize 상대호출
 const PARTNER_ID = 'AF2974050';
 const SUB_ID     = 'bigeyes';
 const LS_KEY = 'be_credits_v08';
@@ -196,40 +196,34 @@ function coupangWebUrl(q){const base='https://www.coupang.com/np/search';const p
 
 /* ===== 요약→검색어 (제목 제외, 불릿 우선) ===== */
 function keywordFromSummary(text=''){
-  const lines = String(text||'')
-    .split('\n')
-    .map(s => s.trim())
-    .filter(s => s && !/^■/.test(s)); // 섹션 제목 제거
+   const raw = String(text||'')
+     .split('\n')
+     .map(s => s.trim())
+     .filter(Boolean);
+   // 섹션제목/가격/행사/주의성 문장 제외
+   const skip = /(■|가격|원|할인|행사|쿠폰|기간|주의|경고|보관|사용법|참조)/;
+   const lines = raw
+     .filter(s => !/^■/.test(s))
+     .filter(s => !skip.test(s));
 
-  // 1순위: 첫 번째 불릿의 내용
-  let firstBullet = lines.find(s => /^[-•]/.test(s)) || '';
-  firstBullet = firstBullet.replace(/^[-•]\s*/, '').trim();
+   // 불릿 제거
+   const bullets = lines
+     .filter(s => /^[-•]/.test(s))
+     .map(s => s.replace(/^[-•]\s*/, '').trim());
 
-  // 2순위: 불릿이 없으면 첫 의미 문장
-  let candidate = firstBullet || (lines[0] || '');
+   // 브랜드/모델/제품명 힌트 토큰 우선 매칭
+   const tokenLike = /([A-Z]{2,}\d{1,}|\d{3,}[A-Z]{1,}|[A-Za-z]{3,}\d{1,}|\b[가-힣A-Za-z]{2,}\b)/g;
+   const candidates = (bullets.length? bullets : lines)
+     .map(s => (s.match(tokenLike)||[]).join(' ').trim())
+     .filter(s => s && s.length >= 2);
 
-  // 노이즈 제거 + 길이 제한
-  candidate = candidate
-    .replace(/[()［\]【】{}<>:;'"“”‘’]/g, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .slice(0, 80)
-    .trim();
-
-  // 3순위(보강): 너무 짧으면 단어 추출
-  if (candidate.length < 4) {
-    const stop = new Set(['주의','경고','사용법','상세','참조','제품','상품','모델','코드','핵심','요약','특징']);
-    const picked = lines
-      .join(' ')
-      .replace(/[()［\]【】{}<>:;'"“”‘’]/g,' ')
-      .split(/\s+/)
-      .map(t => t.replace(/[^0-9A-Za-z가-힣\-]/g,''))
-      .filter(w => w.length >= 2 && !stop.has(w))
-      .slice(0, 6)
-      .join(' ');
-    candidate = (picked || candidate).slice(0, 80);
-  }
-  return candidate;
-}
+   let out = (candidates[0] || (bullets[0] || lines[0] || ''))
+     .replace(/[()［\]【】{}<>:;'"“”‘’]/g, ' ')
+     .replace(/\s{2,}/g, ' ')
+     .trim();
+   if (out.length > 80) out = out.slice(0, 80);
+   return out;
+ }
 
 /* ===== 보고서(제품 식별 제거 버전) ===== */
 function buildReport(payload){
@@ -294,7 +288,7 @@ async function ensureOCR(){
       saveCredits(cur-1); ocrDoneForThisImage=true;
     }
     const base64=await toBase64(lastImageBlob);
-    const r=await fetch(`${API_BASE}/api/summarize`,{
+    const r=await fetch(`/api/summarize`,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({imageBase64:base64,lang:'ko'})
     });
