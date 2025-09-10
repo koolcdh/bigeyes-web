@@ -120,8 +120,8 @@ textarea.summary-box{
 
 <script>
 /* ===== 설정 ===== */
-const API_BASE = 'https://tinytext-web.vercel.app'; // 서버 넣으면 실제 요약, 비우면 Mock 동작
-const USE_MOCK = !API_BASE;
+const API_BASE = window.location.origin;
+const USE_MOCK = false; // 만약 이 변수가 있다면 강제로 실서버 모드
 const PARTNER_ID = 'AF2974050';      // 쿠팡 파트너스
 const SUB_ID     = 'bigeyes';        // 추적 구분자(원하면 변경)
 const LS_KEY = 'be_credits_v08';
