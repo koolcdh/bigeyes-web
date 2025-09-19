@@ -48,6 +48,13 @@ textarea.summary-box{
 .loader-dot:nth-child(2){animation-delay:.15s}
 .loader-dot:nth-child(3){animation-delay:.3s}
 @keyframes bounce{0%,80%,100%{transform:scale(0.8);opacity:.6}40%{transform:scale(1);opacity:1}}
+/* 메인 카피 강조 */
+.brand-line{
+  font-size:22px; font-weight:800; letter-spacing:-0.2px; margin-bottom:6px;
+  background:linear-gradient(90deg,#c2d0ff,#7aa2ff,#c2d0ff);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+@media (min-width:680px){ .brand-line{ font-size:24px; } }
 </style>
 </head>
 <body>
@@ -64,13 +71,14 @@ textarea.summary-box{
 <main>
   <!-- 인트로 -->
   <section class="card">
-    <div class="lead">
-      <strong>사진 속 작은 글씨 요약</strong> + <strong>쿠팡 최저가 바로가기</strong><br/>
-      가입 X, 이용정보 저장 X, 편하게 사용하세요
-    </div>
-    <p style="text-align:center;margin:8px 0 0">
-      <span id="creditTop" class="credit">(이용 가능 건수 : 0000건)</span>
-    </p>
+  <div class="lead">
+    <div class="brand-line">너를 위해 GPT가 준비했어</div>
+    <strong>사진 속 작은 글씨, 한눈에 요약</strong> + <strong>쿠팡 최저가 찾기</strong><br/>
+    가입 X · 저장 X · 바로 사용
+  </div>
+  <p style="text-align:center;margin:8px 0 0">
+    <span id="creditTop" class="credit">(이용 가능 건수 : 0000건)</span>
+  </p>
     <p class="small" style="text-align:center;margin:2px 0 0">
       <a href="/privacy.html">개인정보처리방침</a> · <a href="/terms.html">이용약관</a>
     </p>
