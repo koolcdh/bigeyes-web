@@ -272,7 +272,7 @@ async function ensureOCR(){
 
   _ocrPromise = (async ()=>{
     if(!ocrDoneForThisImage){
-      const cur=loadCredits(); if(cur<=0) throw new Error('잔여 건수가 없습니다.');
+      const cur=loadCredits(); if(cur<=0) throw new Error('잔여 건수가 없습니다.\n\n하단의 [광고 보고 1회 충전]을 누르면 1회 무료 충전돼요!');
       saveCredits(cur-1); ocrDoneForThisImage=true;
     }
     const base64=await toBase64(lastImageBlob);
