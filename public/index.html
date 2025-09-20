@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>BigEyes · 사진 요약 + 쿠팡 최저가</title>
 <meta name="theme-color" content="#0b1020"/>
+<!-- 카메라 권한 힌트(일부 브라우저/웹뷰에서 필요) -->
+<meta http-equiv="Permissions-Policy" content="camera=(self)">
 <style>
 :root { --bg:#0b1020; --card:#121833; --ink:#e8ecff; --muted:#9aa5d1; --accent:#7aa2ff; --line:#223066; }
 *{box-sizing:border-box}
@@ -48,6 +50,7 @@ textarea.summary-box{
 .loader-dot:nth-child(2){animation-delay:.15s}
 .loader-dot:nth-child(3){animation-delay:.3s}
 @keyframes bounce{0%,80%,100%{transform:scale(0.8);opacity:.6}40%{transform:scale(1);opacity:1}}
+
 /* 메인 카피 강조 */
 .brand-line{
   font-size:22px; font-weight:800; letter-spacing:-0.2px; margin-bottom:6px;
@@ -58,7 +61,7 @@ textarea.summary-box{
 </style>
 </head>
 <body>
-<header><h1>👀 BigEyes · 사진 요약 + 쿠팡 최저가</h1></header>
+<header id="appHeader"><h1>👀 BigEyes · 사진 요약 + 쿠팡 최저가</h1></header>
 
 <!-- 로딩 오버레이 -->
 <div id="loadingOverlay" aria-live="polite" aria-busy="true">
@@ -71,18 +74,17 @@ textarea.summary-box{
 <main>
   <!-- 인트로 -->
   <section class="card">
-  <div class="lead">
-    <div class="brand-line">너를 위해 GPT가 준비했어</div>
-    <strong>사진 속 작은 글씨, 한눈에 요약</strong> + <strong>쿠팡 최저가 찾기</strong><br/>
-    가입 X · 저장 X · 바로 사용
-  </div>
-  <p style="text-align:center;margin:8px 0 0">
-    <span id="creditTop" class="credit">(이용 가능 건수 : 0000건)</span>
-  </p>
+    <div class="lead">
+      <div class="brand-line">너를 위해 GPT가 준비했어</div>
+      <strong>사진 속 작은 글씨, 한눈에 요약</strong> + <strong>쿠팡 최저가 찾기</strong><br/>
+      가입 X · 저장 X · 바로 사용
+    </div>
+    <p style="text-align:center;margin:8px 0 0">
+      <span id="creditTop" class="credit">(이용 가능 건수 : 0000건)</span>
+    </p>
     <p class="small" style="text-align:center;margin:2px 0 0">
       <a href="/privacy.html">개인정보처리방침</a> · <a href="/terms.html">이용약관</a>
     </p>
-
   </section>
 
   <!-- STEP 1: 업로드 -->
@@ -95,11 +97,12 @@ textarea.summary-box{
     <div class="row">
       <label class="btn">
         📷 카메라로 찍기
-        <input id="fileCam" type="file" accept="image/*" capture="environment">
+        <!-- capture 힌트 강화 -->
+        <input id="fileCam" type="file" accept="image/*;capture=camera" capture="environment">
       </label>
       <label class="btn">
         📁 파일에서 선택
-        <input id="filePick" type="file" accept="image/*">
+        <input id="filePick" type="file" accept="image/*;capture=camera">
       </label>
     </div>
 
@@ -154,6 +157,20 @@ textarea.summary-box{
 </main>
 
 <script>
+/* ===== 앱/웹뷰: 헤더 자동 숨김 ===== */
+(function () {
+  const p = new URLSearchParams(location.search);
+  const isWebView =
+    /\bwv\b/i.test(navigator.userAgent) ||               // Android WebView
+    /Version\/\d+\.\d+ Chrome\/\d+ Mobile/i.test(navigator.userAgent);
+  if (p.get('app') === '1' || isWebView) {
+    const h = document.getElementById('appHeader');
+    if (h) h.style.display = 'none';
+    // 탭 타이틀도 최소화
+    document.title = ' ';
+  }
+})();
+
 /* ===== 설정 ===== */
 const API_BASE = ""; // 같은 도메인 상대호출 (/api/summarize)
 const PARTNER_ID = 'AF2974050';
