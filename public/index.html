@@ -15,7 +15,8 @@ body{
   color:var(--ink);
   font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Apple SD Gothic Neo,Malgun Gothic,sans-serif;
   background:#0b1020;
-  padding-top:0; /* 앱 기준: 상단 여백 제거 → 꽉찬 느낌 */
+    /* 👇 상단 여백 추가 */
+  padding-top: max(env(safe-area-inset-top, 0px), 20px);
 }
 header{
   position:sticky; top:0; padding:14px 16px;
