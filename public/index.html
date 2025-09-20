@@ -5,28 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>BigEyes · 사진 요약 + 쿠팡 최저가</title>
 <meta name="theme-color" content="#0b1020"/>
-<meta http-equiv="Permissions-Policy" content="camera=(self)"/>
+<meta http-equiv="Permissions-Policy" content="camera=(self)" />
 <style>
 :root { --bg:#0b1020; --card:#121833; --ink:#e8ecff; --muted:#9aa5d1; --accent:#7aa2ff; --line:#223066; }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0;color:var(--ink);
+  margin:0;
+  color:var(--ink);
   font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Apple SD Gothic Neo,Malgun Gothic,sans-serif;
   background:#0b1020;
-  /* 상단 안전영역 보정: 상태바가 겹쳐 보이는 기기에서 위로 끌어올려 보이는 느낌 해결 */
-  padding-top:env(safe-area-inset-top, 0);
+  padding-top:0; /* 앱 기준: 상단 여백 제거 → 꽉찬 느낌 */
 }
 header{
-  position:sticky;top:0;padding:14px 16px calc(10px + env(safe-area-inset-top,0));
+  position:sticky; top:0; padding:14px 16px;
   border-bottom:1px solid var(--line);
-  background:#0b1020cc;backdrop-filter:blur(6px);text-align:center;z-index:5
+  background:#0b1020cc; backdrop-filter:blur(6px);
+  text-align:center; z-index:5;
 }
 h1{margin:0;font-size:19px}
-main{
-  max-width:900px;margin:0 auto;
-  padding:14px 16px 24px;display:grid;gap:14px;
-}
+main{max-width:900px;margin:0 auto;padding:14px 16px 24px;display:grid;gap:14px}
 .card{background:#121833e8;border:1px solid var(--line);border-radius:16px;padding:16px}
 .lead{text-align:center;line-height:1.8}
 .credit{font-weight:700;color:#b9c8ff}
@@ -34,7 +32,6 @@ main{
 .grid2{display:grid;gap:10px;grid-template-columns:repeat(2,1fr)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 16px;border-radius:14px;background:#1a2a6b;border:1px solid #3350aa;color:#fff;font-weight:700;cursor:pointer}
 .btn.secondary{background:#0e1430;border-color:#2a3a7a;color:#c9d3ff}
-.btn.ghost{background:transparent;border:1px dashed #2a3a7a;color:#c9d3ff}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 input[type="file"]{display:none}
 input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #2a3a7a;background:#0e1430;color:#e8ecff}
@@ -68,33 +65,16 @@ textarea.summary-box{
   -webkit-background-clip:text; background-clip:text; color:transparent;
 }
 @media (min-width:680px){ .brand-line{ font-size:24px; } }
-
-/* 라이브카메라 모달 */
-#liveCam{position:fixed;inset:0;display:none;place-items:center;background:#000a;z-index:10000}
-#liveCam.show{display:grid}
-.live-wrap{background:#0b1020;border:1px solid #223066;border-radius:16px;padding:12px;width:min(92vw,420px)}
-video{width:100%;border-radius:12px;background:#000}
 </style>
 </head>
 <body>
-<header id="appHeader"><h1>👀 BigEyes · 사진 요약 + 쿠팡 최저가</h1></header>
+<header><h1>👀 BigEyes · 사진 요약 + 쿠팡 최저가</h1></header>
 
 <!-- 로딩 오버레이 -->
 <div id="loadingOverlay" aria-live="polite" aria-busy="true">
   <div class="loader">
     <span class="loader-dot"></span><span class="loader-dot"></span><span class="loader-dot"></span>
     <span>처리 중입니다... 잠시만요</span>
-  </div>
-</div>
-
-<!-- 라이브 카메라 모달 -->
-<div id="liveCam" role="dialog" aria-modal="true" aria-label="카메라 촬영">
-  <div class="live-wrap">
-    <video id="liveVideo" autoplay playsinline></video>
-    <div class="grid2" style="margin-top:10px">
-      <button id="btnShoot" class="btn">📸 촬영</button>
-      <button id="btnCloseLive" class="btn secondary">닫기</button>
-    </div>
   </div>
 </div>
 
@@ -122,17 +102,15 @@ video{width:100%;border-radius:12px;background:#000}
     </div>
 
     <div class="row">
-      <!-- 기본 카메라(브라우저/웹뷰가 파일선택만 열어도 OK) -->
+      <!-- 앱(WebView)에서 카메라 Intent 호출 (WebView에서 onShowFileChooser 구현 필요) -->
       <label class="btn">
         📷 카메라로 찍기
         <input id="fileCam" type="file" accept="image/*;capture=camera" capture="environment">
       </label>
       <label class="btn">
         📁 파일에서 선택
-        <input id="filePick" type="file" accept="image/*;capture=camera">
+        <input id="filePick" type="file" accept="image/*">
       </label>
-      <!-- 확실히 카메라 오픈: getUserMedia -->
-      <button id="btnLive" class="btn ghost">🎥 바로 촬영(베타)</button>
     </div>
 
     <img id="imgPrev" class="preview hidden" alt="preview"/>
@@ -144,7 +122,7 @@ video{width:100%;border-radius:12px;background:#000}
     <p class="small">※ 본 링크는 쿠팡 파트너스 활동으로 일정 수수료를 받을 수 있습니다</p>
   </section>
 
-  <!-- STEP 2-A: 보고서 -->
+  <!-- STEP 2-A: 보고서(읽기 전용) -->
   <section id="stepSummary" class="card hidden">
     <h2 class="section-title">2) 요약 결과(보고서)</h2>
     <textarea id="sumReadOnly" class="summary-box" readonly></textarea>
@@ -185,17 +163,6 @@ video{width:100%;border-radius:12px;background:#000}
 </main>
 
 <script>
-/* ===== 앱/웹뷰: 헤더 자동 숨김(메인화면 안정감 유지, 웹뷰에선 숨김) ===== */
-(function () {
-  const p = new URLSearchParams(location.search);
-  const isWebView = /\bwv\b/i.test(navigator.userAgent) || /Version\/\d+\.\d+ Chrome\/\d+ Mobile/i.test(navigator.userAgent);
-  if (p.get('app') === '1' || isWebView) {
-    const h = document.getElementById('appHeader');
-    if (h) h.style.display = 'none';
-    document.title = ' ';
-  }
-})();
-
 /* ===== 설정 ===== */
 const PARTNER_ID = 'AF2974050';
 const SUB_ID     = 'bigeyes';
@@ -205,7 +172,7 @@ const MAX_CREDITS = 9999;
 
 /* ===== 상태/요소 ===== */
 let lastImageBlob = null;
-let lastOCR = null;
+let lastOCR = null;           // 서버에서 받은 payload(=요약 + 추천검색어)
 let ocrDoneForThisImage = false;
 
 const $ = id => document.getElementById(id);
@@ -218,8 +185,6 @@ const sumBox=$('sumBox'), btnEditSum=$('btnEditSum'), kwFinal=$('kwFinal');
 const btnBack2=$('btnBack2'), btnGoCoupang=$('btnGoCoupang');
 const btnReward=$('btnReward');
 const loadingOverlay=$('loadingOverlay');
-const btnLive=$('btnLive'), liveEl=$('liveCam'), liveVideo=$('liveVideo');
-const btnShoot=$('btnShoot'), btnCloseLive=$('btnCloseLive');
 
 /* ===== 공통 ===== */
 async function showLoading(on=true){
@@ -246,7 +211,6 @@ async function toBase64(file, maxSide=1600, quality=0.8){
   const ctx = canvas.getContext('2d'); ctx.drawImage(img,0,0,w,h);
   return canvas.toDataURL('image/jpeg',quality).split(',')[1];
 }
-function dataURLtoBlob(u){const a=u.split(','),m=a[0].match(/:(.*?);/)[1];const b=atob(a[1]);const n=b.length;const u8=new Uint8Array(n);for(let i=0;i<n;i++)u8[i]=b.charCodeAt(i);return new Blob([u8],{type:m});}
 function coupangAppUrl(q){return 'coupang://search?q='+encodeURIComponent(q)}
 function coupangWebUrl(q){const base='https://www.coupang.com/np/search';const params=new URLSearchParams({q,channel:'user',lptag:PARTNER_ID,subId:SUB_ID});return `${base}?${params.toString()}`}
 
@@ -298,39 +262,6 @@ async function onPick(file, from){
 fileCam.addEventListener('change', e=>{ onPick(e.target.files?.[0], 'cam'); });
 filePick.addEventListener('change', e=>{ onPick(e.target.files?.[0], 'pick'); });
 
-/* ===== 라이브 카메라(확실히 열기) ===== */
-let liveStream=null;
-const btnLiveEl = document.getElementById('btnLive');
-btnLiveEl.addEventListener('click', async ()=>{
-  try{
-    liveEl.classList.add('show');
-    liveStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal:'environment' } }, audio:false
-    });
-    liveVideo.srcObject = liveStream;
-  }catch(e){
-    liveEl.classList.remove('show');
-    alert('카메라를 사용할 수 없습니다. 브라우저/앱 권한을 확인해주세요.');
-  }
-});
-btnCloseLive.addEventListener('click', ()=>{
-  if(liveStream){ liveStream.getTracks().forEach(t=>t.stop()); liveStream=null; }
-  liveEl.classList.remove('show');
-});
-btnShoot.addEventListener('click', async ()=>{
-  try{
-    const v = liveVideo;
-    if(!v.videoWidth){ return alert('카메라 초기화 중입니다. 잠시 후 다시 시도하세요.'); }
-    const canvas=document.createElement('canvas'); canvas.width=v.videoWidth; canvas.height=v.videoHeight;
-    const ctx=canvas.getContext('2d'); ctx.drawImage(v,0,0,canvas.width,canvas.height);
-    const dataURL=canvas.toDataURL('image/jpeg',0.9);
-    const blob=dataURLtoBlob(dataURL);
-    const file=new File([blob], `live_${Date.now()}.jpg`, {type:'image/jpeg', lastModified:Date.now()});
-    await onPick(file,'cam');
-    btnCloseLive.click();
-  }catch(e){ alert('촬영에 실패했습니다. 다시 시도해주세요.'); }
-});
-
 /* ===== OCR(한 번만 차감) ===== */
 let _ocrPromise=null;
 async function ensureOCR(){
@@ -360,7 +291,7 @@ async function ensureOCR(){
   return _ocrPromise;
 }
 
-/* ===== 플로우 ===== */
+/* ===== 보조 함수 ===== */
 const keywordFromSummary=(t='')=>{
   const raw=String(t||'').split('\n').map(s=>s.trim()).filter(Boolean);
   const skip=/(■|가격|원|할인|행사|쿠폰|기간|주의|경고|보관|사용법|참조)/;
@@ -372,8 +303,11 @@ const keywordFromSummary=(t='')=>{
   if(out.length>80) out=out.slice(0,80);
   return out;
 };
+function coupangAppUrl(q){return 'coupang://search?q='+encodeURIComponent(q)}
+function coupangWebUrl(q){const base='https://www.coupang.com/np/search';const params=new URLSearchParams({q,channel:'user',lptag:PARTNER_ID,subId:SUB_ID});return `${base}?${params.toString()}`}
 
-btnAnalyze.addEventListener('click', async ()=>{
+/* ===== 플로우 ===== */
+document.getElementById('btnAnalyze').addEventListener('click', async ()=>{
   await showLoading(true);
   try{
     const payload=await ensureOCR();
@@ -398,7 +332,7 @@ btnAnalyze.addEventListener('click', async ()=>{
 });
 document.getElementById('btnBackSum').addEventListener('click', ()=>{ stepSummary.classList.add('hidden'); stepUpload.classList.remove('hidden'); });
 
-btnCoupangFlow.addEventListener('click', async ()=>{
+document.getElementById('btnCoupangFlow').addEventListener('click', async ()=>{
   await showLoading(true);
   try{
     const payload=await ensureOCR();
@@ -414,7 +348,7 @@ btnCoupangFlow.addEventListener('click', async ()=>{
 });
 
 let isEditingSummary=false;
-btnEditSum.addEventListener('click', ()=>{
+document.getElementById('btnEditSum').addEventListener('click', ()=>{
   isEditingSummary=!isEditingSummary;
   sumBox.readOnly=!isEditingSummary;
   btnEditSum.textContent=isEditingSummary?'✅ 수정 완료':'✏️ 수정';
@@ -424,15 +358,19 @@ btnEditSum.addEventListener('click', ()=>{
   }
 });
 
-btnGoCoupang.addEventListener('click', ()=>{
+document.getElementById('btnGoCoupang').addEventListener('click', ()=>{
   const keyword=(kwFinal.value||'').trim();
   if(!keyword) return alert('검색어를 입력하세요.');
   const appU=coupangAppUrl(keyword), webU=coupangWebUrl(keyword);
   location.href=appU; setTimeout(()=>window.open(webU,'_blank','noopener,noreferrer'),400);
 });
-btnBack2.addEventListener('click', ()=>{ stepCoupang.classList.add('hidden'); stepUpload.classList.remove('hidden'); });
+document.getElementById('btnBack2').addEventListener('click', ()=>{ stepCoupang.classList.add('hidden'); stepUpload.classList.remove('hidden'); });
 
-btnReward.addEventListener('click', ()=>{ saveCredits(loadCredits()+1); alert('광고 시청 완료! 1회 충전되었습니다.'); });
+document.getElementById('btnReward').addEventListener('click', ()=>{ saveCredits(loadCredits()+1); alert('광고 시청 완료! 1회 충전되었습니다.'); });
+
+/* ===== 파일 input 바인딩 ===== */
+fileCam.addEventListener('change', e=>{ onPick(e.target.files?.[0], 'cam'); });
+filePick.addEventListener('change', e=>{ onPick(e.target.files?.[0], 'pick'); });
 </script>
 </body>
 </html>
