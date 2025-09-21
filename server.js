@@ -1,4 +1,4 @@
-// server.js — TinyText (final: +coupang_query)
+// server.js — TinyText (final: +coupang_query, +guessSummary)
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
@@ -277,8 +277,17 @@ app.post('/api/summarize', async (req, res) => {
     }
 
     const payload = { domain, categories, coreSummary: core, coupangQuery };
+
+    // (수정사항2) 추정 요약 추가 — coupangQuery 또는 coreSummary 첫 줄을 근거로 생성
+    const firstCoreLine = String(payload.coreSummary || '')
+      .split('\n').map(s=>s.trim()).filter(Boolean)[0] || '';
+    const basis = String(payload.coupangQuery || firstCoreLine || '').trim();
+    const guessSummary = basis
+      ? `추정 분석 — ${basis}\n※ 추정 결과임`
+      : '추정 결과 없음';
+
     console.log('[result]', { domain: payload.domain, keys: payload.categories.map(c=>c.key), cq: payload.coupangQuery?.slice(0,60) });
-    return res.json({ success:true, payload });
+    return res.json({ success:true, payload: { ...payload, guessSummary } });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ success:false, message:e.message });

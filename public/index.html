@@ -11,12 +11,10 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0;
-  color:var(--ink);
+  margin:0; color:var(--ink);
   font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Apple SD Gothic Neo,Malgun Gothic,sans-serif;
   background:#0b1020;
-    /* 👇 상단 여백 추가 */
-  padding-top: max(env(safe-area-inset-top, 0px), 20px);
+  padding-top:max(env(safe-area-inset-top,0px),20px);
 }
 header{
   position:sticky; top:0; padding:14px 16px;
@@ -35,12 +33,15 @@ main{max-width:900px;margin:0 auto;padding:14px 16px 24px;display:grid;gap:14px}
 .btn.secondary{background:#0e1430;border-color:#2a3a7a;color:#c9d3ff}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 input[type="file"]{display:none}
-input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #2a3a7a;background:#0e1430;color:#e8ecff}
+input[type="text"]{
+  width:100%;padding:12px 14px;border-radius:12px;border:1px solid #2a3a7a;background:#0e1430;color:#e8ecff
+}
+/* ✨ 결과 박스 내부 스크롤 (수정사항 3) */
 textarea.summary-box{
-  width:100%; min-height:220px; padding:12px 14px;
-  border-radius:12px; border:1px solid #2a3a7a;
+  width:100%; min-height:220px; max-height:300px;  /* 고정 상한 */
+  padding:12px 14px; border-radius:12px; border:1px solid #2a3a7a;
   background:#0e1430; color:#e8ecff; line-height:1.7; font-size:15px;
-  white-space:pre-wrap; resize:vertical;
+  white-space:pre-wrap; resize:vertical; overflow-y:auto;
 }
 .preview{width:100%;max-height:380px;object-fit:contain;border-radius:12px;border:1px solid var(--line)}
 .hidden{display:none}
@@ -48,24 +49,27 @@ textarea.summary-box{
 .section-title{margin:0 0 6px}
 
 /* 로딩 오버레이 */
-#loadingOverlay{position:fixed; inset:0; display:none; place-items:center;
-  background:rgba(6,10,25,.58); backdrop-filter: blur(6px); z-index:9999;}
+#loadingOverlay{position:fixed; inset:0; display:none; place-items:center; background:rgba(6,10,25,.58); backdrop-filter: blur(6px); z-index:9999;}
 #loadingOverlay.show{display:grid}
-.loader{display:inline-flex; align-items:center; gap:10px;
-  background:#121833; border:1px solid #223066; color:#e8ecff;
-  padding:12px 18px; border-radius:12px; font-weight:700;}
+.loader{display:inline-flex; align-items:center; gap:10px; background:#121833; border:1px solid #223066; color:#e8ecff; padding:12px 18px; border-radius:12px; font-weight:700;}
 .loader-dot{width:8px;height:8px;border-radius:50%;background:#7aa2ff;animation:bounce .9s infinite ease-in-out}
 .loader-dot:nth-child(2){animation-delay:.15s}
 .loader-dot:nth-child(3){animation-delay:.3s}
 @keyframes bounce{0%,80%,100%{transform:scale(0.8);opacity:.6}40%{transform:scale(1);opacity:1}}
 
-/* 메인 카피 강조 */
 .brand-line{
   font-size:22px; font-weight:800; letter-spacing:-0.2px; margin-bottom:6px;
   background:linear-gradient(90deg,#c2d0ff,#7aa2ff,#c2d0ff);
   -webkit-background-clip:text; background-clip:text; color:transparent;
 }
 @media (min-width:680px){ .brand-line{ font-size:24px; } }
+
+/* 추정 섹션 박스 */
+.box {
+  border:1px solid #2a3a7a; background:#0e1430; border-radius:12px; padding:12px;
+}
+.box pre{margin:0; white-space:pre-wrap; line-height:1.7; font-size:15px; color:#e8ecff}
+.field-hint{margin-top:6px; font-size:13px; opacity:.7;}
 </style>
 </head>
 <body>
@@ -103,7 +107,6 @@ textarea.summary-box{
     </div>
 
     <div class="row">
-      <!-- 앱(WebView)에서 카메라 Intent 호출 (WebView에서 onShowFileChooser 구현 필요) -->
       <label class="btn">
         📷 카메라로 찍기
         <input id="fileCam" type="file" accept="image/*;capture=camera" capture="environment">
@@ -123,10 +126,19 @@ textarea.summary-box{
     <p class="small">※ 본 링크는 쿠팡 파트너스 활동으로 일정 수수료를 받을 수 있습니다</p>
   </section>
 
-  <!-- STEP 2-A: 보고서(읽기 전용) -->
+  <!-- STEP 2-A: 보고서 -->
   <section id="stepSummary" class="card hidden">
     <h2 class="section-title">2) 요약 결과(보고서)</h2>
+
+    <!-- OCR 결과: textarea 내부 스크롤 (수정3) -->
     <textarea id="sumReadOnly" class="summary-box" readonly></textarea>
+
+    <!-- 추정 섹션(수정2) -->
+    <div class="box" style="margin-top:12px;">
+      <div class="small" style="opacity:.8;margin-bottom:6px;">■ 추정 분석 (참고용)</div>
+      <pre id="guessBox">※ 시각적 특징 기반 추정 결과이며 실제와 다를 수 있습니다.</pre>
+    </div>
+
     <div class="row" style="grid-template-columns:1fr auto;align-items:center">
       <button id="btnBackSum" class="btn secondary">⬅ 이전 화면으로</button>
       <button id="btnGoCoupangDirect" class="btn">🛒 쿠팡최저가 가기</button>
@@ -134,24 +146,21 @@ textarea.summary-box{
     <p class="small">※ 요약을 바탕으로 검색어를 만들고, 다음 화면에서 수정할 수 있어요.</p>
   </section>
 
-  <!-- STEP 2-B: 쿠팡 키워드 확인/수정 -->
+  <!-- STEP 2-B: 쿠팡 키워드 확인 -->
   <section id="stepCoupang" class="card hidden">
     <h2 class="section-title">2) 쿠팡 검색 전 확인</h2>
-    <div class="row">
-      <label><strong>요약 내용</strong></label>
-      <textarea id="sumBox" class="summary-box" readonly></textarea>
-      <div class="grid2">
-        <button id="btnEditSum" class="btn secondary">✏️ 수정</button>
-        <span class="small" style="align-self:center">※ 필요할 때만 수정하세요.</span>
-      </div>
 
-      <label><strong>검색어</strong></label>
-      <input id="kwFinal" type="text" placeholder="쿠팡 검색어" />
+    <label><strong>요약 내용</strong></label>
+    <textarea id="sumBox" class="summary-box" readonly></textarea>
 
-      <div class="grid2" style="margin-top:8px">
-        <button id="btnBack2" class="btn secondary">⬅ 이전 화면으로</button>
-        <button id="btnGoCoupang" class="btn">🛒 최저가 보러가기</button>
-      </div>
+    <label style="margin-top:8px;"><strong>검색어</strong></label>
+    <input id="kwFinal" type="text" placeholder="쿠팡 검색어" />
+    <!-- 수정4: 수정 버튼 제거 + 안내 문구 -->
+    <div class="field-hint">※ 변경 필요시 직접 변경하세요.</div>
+
+    <div class="grid2" style="margin-top:8px">
+      <button id="btnBack2" class="btn secondary">⬅ 이전 화면으로</button>
+      <button id="btnGoCoupang" class="btn">🛒 최저가 보러가기</button>
     </div>
   </section>
 
@@ -173,7 +182,7 @@ const MAX_CREDITS = 9999;
 
 /* ===== 상태/요소 ===== */
 let lastImageBlob = null;
-let lastOCR = null;           // 서버에서 받은 payload(=요약 + 추천검색어)
+let lastOCR = null;           // 서버에서 받은 payload(=요약 + 추천검색어 + 추정)
 let ocrDoneForThisImage = false;
 
 const $ = id => document.getElementById(id);
@@ -182,10 +191,11 @@ const stepUpload=$('stepUpload'), stepSummary=$('stepSummary'), stepCoupang=$('s
 const fileCam=$('fileCam'), filePick=$('filePick'), imgPrev=$('imgPrev');
 const btnAnalyze=$('btnAnalyze'), btnCoupangFlow=$('btnCoupangFlow');
 const sumReadOnly=$('sumReadOnly'), btnBackSum=$('btnBackSum');
-const sumBox=$('sumBox'), btnEditSum=$('btnEditSum'), kwFinal=$('kwFinal');
+const sumBox=$('sumBox'), kwFinal=$('kwFinal');
 const btnBack2=$('btnBack2'), btnGoCoupang=$('btnGoCoupang');
 const btnReward=$('btnReward');
 const loadingOverlay=$('loadingOverlay');
+const guessBox=$('guessBox');
 
 /* ===== 공통 ===== */
 async function showLoading(on=true){
@@ -203,8 +213,10 @@ function renderCredits(v=loadCredits()){
 (function initCredits(){const p=new URLSearchParams(location.search); if(p.has('reset')) localStorage.removeItem(LS_KEY); renderCredits();})();
 
 /* ===== 유틸 ===== */
-async function toBase64(file, maxSide=1600, quality=0.8){
-  const img = await new Promise(res=>{ const i=new Image(); i.onload=()=>res(i); i.src=URL.createObjectURL(file); });
+/* (수정1) 업로드 전 리사이즈 강도↑ : maxSide=1200 */
+async function toBase64(file, maxSide=1200, quality=0.8){
+  const img = await new Promise(res=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>res(null); i.src=URL.createObjectURL(file); });
+  if(!img) throw new Error('이미지를 불러오지 못했습니다.');
   const {width, height} = img;
   const scale = Math.min(1, maxSide / Math.max(width, height));
   const w = Math.round(width * scale), h = Math.round(height * scale);
@@ -215,7 +227,7 @@ async function toBase64(file, maxSide=1600, quality=0.8){
 function coupangAppUrl(q){return 'coupang://search?q='+encodeURIComponent(q)}
 function coupangWebUrl(q){const base='https://www.coupang.com/np/search';const params=new URLSearchParams({q,channel:'user',lptag:PARTNER_ID,subId:SUB_ID});return `${base}?${params.toString()}`}
 
-/* ===== 보고서 빌드 ===== */
+/* ===== 보고서 빌드 (OCR 텍스트를 보기 좋게) ===== */
 function buildReport(payload){
   const lines=[];
   const core = String(payload.coreSummary||'').trim();
@@ -275,7 +287,9 @@ async function ensureOCR(){
       const cur=loadCredits(); if(cur<=0) throw new Error('잔여 건수가 없습니다.\n\n하단의 [광고 보고 1회 충전]을 누르면 1회 무료 충전돼요!');
       saveCredits(cur-1); ocrDoneForThisImage=true;
     }
-    const base64=await toBase64(lastImageBlob);
+    const base64=await toBase64(lastImageBlob).catch(()=>null);
+    if(!base64){ throw new Error('사진 용량이 커서 실패했습니다. 다시 시도해주세요.'); }
+
     const r=await fetch(`/api/summarize`,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({imageBase64:base64,lang:'ko'})
@@ -292,8 +306,8 @@ async function ensureOCR(){
   return _ocrPromise;
 }
 
-/* ===== 보조 함수 ===== */
-const keywordFromSummary=(t='')=>{
+/* ===== 쿠팡 링크 ===== */
+function keywordFromSummary(t=''){
   const raw=String(t||'').split('\n').map(s=>s.trim()).filter(Boolean);
   const skip=/(■|가격|원|할인|행사|쿠폰|기간|주의|경고|보관|사용법|참조)/;
   const lines=raw.filter(s=>!/^■/.test(s)).filter(s=>!skip.test(s));
@@ -303,22 +317,25 @@ const keywordFromSummary=(t='')=>{
   let out=(cands[0]||(bullets[0]||lines[0]||'')).replace(/[()［\]【】{}<>:;'"“”‘’]/g,' ').replace(/\s{2,}/g,' ').trim();
   if(out.length>80) out=out.slice(0,80);
   return out;
-};
-function coupangAppUrl(q){return 'coupang://search?q='+encodeURIComponent(q)}
-function coupangWebUrl(q){const base='https://www.coupang.com/np/search';const params=new URLSearchParams({q,channel:'user',lptag:PARTNER_ID,subId:SUB_ID});return `${base}?${params.toString()}`}
+}
+function coupangAppUrl2(q){return 'coupang://search?q='+encodeURIComponent(q)}
+function coupangWebUrl2(q){const base='https://www.coupang.com/np/search';const params=new URLSearchParams({q,channel:'user',lptag:PARTNER_ID,subId:SUB_ID});return `${base}?${params.toString()}`} // keep both helpers if needed
 
 /* ===== 플로우 ===== */
-document.getElementById('btnAnalyze').addEventListener('click', async ()=>{
+$('btnAnalyze').addEventListener('click', async ()=>{
   await showLoading(true);
   try{
     const payload=await ensureOCR();
     const report=buildReport(payload);
     sumReadOnly.value=report;
 
-    const btnGo=document.getElementById('btnGoCoupangDirect');
+    // 추정 섹션 채우기 (수정2)
+    guessBox.textContent = (payload.guessSummary && String(payload.guessSummary).trim()) || '추정 결과 없음';
+
+    const btnGo=$('btnGoCoupangDirect');
     btnGo.onclick=()=>{
       sumBox.value=report;
-      sumBox.readOnly=true; btnEditSum.textContent='✏️ 수정';
+      sumBox.readOnly=true;
       kwFinal.value=(payload.coupangQuery && payload.coupangQuery.trim()) || keywordFromSummary(report);
       stepSummary.classList.add('hidden');
       stepCoupang.classList.remove('hidden');
@@ -331,15 +348,18 @@ document.getElementById('btnAnalyze').addEventListener('click', async ()=>{
   }catch(e){ alert(e.message||'오류가 발생했습니다.'); }
   finally{ await showLoading(false); }
 });
-document.getElementById('btnBackSum').addEventListener('click', ()=>{ stepSummary.classList.add('hidden'); stepUpload.classList.remove('hidden'); });
 
-document.getElementById('btnCoupangFlow').addEventListener('click', async ()=>{
+$('btnBackSum').addEventListener('click', ()=>{
+  stepSummary.classList.add('hidden'); stepUpload.classList.remove('hidden');
+});
+
+$('btnCoupangFlow').addEventListener('click', async ()=>{
   await showLoading(true);
   try{
     const payload=await ensureOCR();
     const report=buildReport(payload);
     sumBox.value=report;
-    sumBox.readOnly=true; btnEditSum.textContent='✏️ 수정';
+    sumBox.readOnly=true;
     kwFinal.value=(payload.coupangQuery && payload.coupangQuery.trim()) || keywordFromSummary(report);
     stepUpload.classList.add('hidden');
     stepCoupang.classList.remove('hidden');
@@ -348,26 +368,21 @@ document.getElementById('btnCoupangFlow').addEventListener('click', async ()=>{
   finally{ await showLoading(false); }
 });
 
-let isEditingSummary=false;
-document.getElementById('btnEditSum').addEventListener('click', ()=>{
-  isEditingSummary=!isEditingSummary;
-  sumBox.readOnly=!isEditingSummary;
-  btnEditSum.textContent=isEditingSummary?'✅ 수정 완료':'✏️ 수정';
-  if(!isEditingSummary){
-    const first=(sumBox.value||'').split('\n').map(s=>s.trim()).filter(Boolean)[0]||'';
-    if(first && !kwFinal.value.trim()) kwFinal.value=first.slice(0,80);
-  }
-});
-
-document.getElementById('btnGoCoupang').addEventListener('click', ()=>{
+$('btnGoCoupang').addEventListener('click', ()=>{
   const keyword=(kwFinal.value||'').trim();
   if(!keyword) return alert('검색어를 입력하세요.');
   const appU=coupangAppUrl(keyword), webU=coupangWebUrl(keyword);
   location.href=appU; setTimeout(()=>window.open(webU,'_blank','noopener,noreferrer'),400);
 });
-document.getElementById('btnBack2').addEventListener('click', ()=>{ stepCoupang.classList.add('hidden'); stepUpload.classList.remove('hidden'); });
+$('btnBack2').addEventListener('click', ()=>{
+  stepCoupang.classList.add('hidden'); stepUpload.classList.remove('hidden');
+});
 
-document.getElementById('btnReward').addEventListener('click', ()=>{ saveCredits(loadCredits()+1); alert('광고 시청 완료! 1회 충전되었습니다.'); });
+/* ===== 보상형 광고(로컬 크레딧) ===== */
+$('btnReward').addEventListener('click', ()=>{
+  saveCredits(loadCredits()+1);
+  alert('광고 시청 완료! 1회 충전되었습니다.');
+});
 
 /* ===== 파일 input 바인딩 ===== */
 fileCam.addEventListener('change', e=>{ onPick(e.target.files?.[0], 'cam'); });
