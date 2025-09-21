@@ -1,4 +1,4 @@
-// api/summarize.js — final (+coupang_query, +guessSummary)
+// api/summarize.js — final (+coupang_query)
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
@@ -333,17 +333,9 @@ ${JSON.stringify(prevCategories, null, 2)}
       return res.status(500).json({ success:false, message:'OCR/요약에 실패했습니다.' });
     }
 
-    // (수정사항2) 추정 모드 간단 생성: coupangQuery 또는 coreSummary 첫 줄 기반
-    const firstCoreLine = String(lastResult.coreSummary || '')
-      .split('\n').map(s=>s.trim()).filter(Boolean)[0] || '';
-    const basis = String(lastResult.coupangQuery || firstCoreLine || '').trim();
-    const guessSummary = basis
-      ? `추정 분석 — ${basis}\n※ 추정 결과임`
-      : '추정 결과 없음';
-
     return res.json({
       success: true,
-      payload: { ...lastResult, guessSummary }, // ★ 추정 섹션 포함
+      payload: lastResult,
       meta: { model_used: usedModel, fallback_used: fellBack }
     });
 
